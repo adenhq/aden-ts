@@ -1,0 +1,4353 @@
+{
+  "generated_at": "2025-12-16T03:43:55.503Z",
+  "period": {
+    "start": "2025-12-16T03:14:37.966Z",
+    "end": "2025-12-16T03:43:55.500Z",
+    "duration_hours": 0.4882038888888889
+  },
+  "summary": {
+    "total_requests": 360,
+    "total_tokens": 345836,
+    "total_cost": 0.11866739999999999,
+    "projected_monthly_cost": 175.00992913935093,
+    "cache_savings": 0.007756799999999999,
+    "success_rate": 100,
+    "avg_latency_ms": 9763.958333333334,
+    "p50_latency_ms": 10369,
+    "p95_latency_ms": 15344,
+    "p99_latency_ms": 19867
+  },
+  "costs": {
+    "by_model": {
+      "gpt-4o": {
+        "requests": 360,
+        "tokens": 345836,
+        "cost": 0.11866739999999999
+      }
+    },
+    "by_hour": [
+      {
+        "hour": "2025-12-16T03",
+        "cost": 0.11866739999999999,
+        "requests": 360
+      }
+    ],
+    "by_pattern_type": {
+      "conversations": 0.02540415,
+      "multi_tenant": 0.028965599999999998,
+      "cascaded_agents": 0.00496395,
+      "direct": 0.05933369999999996
+    }
+  },
+  "patterns": {
+    "conversations": [
+      {
+        "type": "conversation",
+        "conversation_id": "conv-1765854877966-5t77td",
+        "user_id": "dev-1",
+        "started_at": "2025-12-16T03:14:37.966Z",
+        "ended_at": "2025-12-16T03:16:05.738Z",
+        "turns": [
+          {
+            "turn_number": 1,
+            "role": "user",
+            "event": {
+              "id": "resp_0c0ae640b137c990006940ce9e13bc81989295ac4f6078349b",
+              "timestamp": "2025-12-16T03:14:41.927Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 3961,
+              "input_tokens": 49,
+              "output_tokens": 194,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00012375
+            },
+            "context_tokens": 49,
+            "context_utilization": 0.03828125,
+            "cumulative_cost": 0.00012375,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 2,
+            "role": "assistant",
+            "event": {
+              "id": "resp_0c0ae640b137c990006940cea1f6308198bbf04bb775caf3ab",
+              "timestamp": "2025-12-16T03:14:56.335Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 14408,
+              "input_tokens": 260,
+              "output_tokens": 800,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.000519
+            },
+            "context_tokens": 309,
+            "context_utilization": 0.24140625,
+            "cumulative_cost": 0.0006427500000000001,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 3,
+            "role": "user",
+            "event": {
+              "id": "resp_0c0ae640b137c990006940ceb05e9c8198bb164da2252c4288",
+              "timestamp": "2025-12-16T03:15:08.357Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 12022,
+              "input_tokens": 1077,
+              "output_tokens": 696,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0005791500000000001
+            },
+            "context_tokens": 1386,
+            "context_utilization": 1.0828125,
+            "cumulative_cost": 0.0012219000000000002,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 4,
+            "role": "assistant",
+            "event": {
+              "id": "resp_0c0ae640b137c990006940cebc6a6c8198b9a6df185aa92b25",
+              "timestamp": "2025-12-16T03:15:22.892Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 14535,
+              "input_tokens": 1787,
+              "output_tokens": 799,
+              "cached_tokens": 1536,
+              "reasoning_tokens": 0,
+              "cost": 0.00063225
+            },
+            "context_tokens": 3173,
+            "context_utilization": 2.47890625,
+            "cumulative_cost": 0.0018541500000000002,
+            "cache_efficiency": 85.9541130386122
+          },
+          {
+            "turn_number": 5,
+            "role": "user",
+            "event": {
+              "id": "resp_0c0ae640b137c990006940cecaef948198b18247879bd93e2d",
+              "timestamp": "2025-12-16T03:15:30.777Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 7885,
+              "input_tokens": 2604,
+              "output_tokens": 318,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0005813999999999999
+            },
+            "context_tokens": 5777,
+            "context_utilization": 4.51328125,
+            "cumulative_cost": 0.00243555,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 6,
+            "role": "assistant",
+            "event": {
+              "id": "resp_0c0ae640b137c990006940ced2d8d481989b6f35527e1d9bff",
+              "timestamp": "2025-12-16T03:15:43.092Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 12315,
+              "input_tokens": 2937,
+              "output_tokens": 591,
+              "cached_tokens": 2432,
+              "reasoning_tokens": 0,
+              "cost": 0.00061275
+            },
+            "context_tokens": 8714,
+            "context_utilization": 6.807812500000001,
+            "cumulative_cost": 0.0030483,
+            "cache_efficiency": 82.80558392917943
+          },
+          {
+            "turn_number": 7,
+            "role": "user",
+            "event": {
+              "id": "resp_0c0ae640b137c990006940cedf27b881988eebd0eb2e1a5fdd",
+              "timestamp": "2025-12-16T03:15:54.369Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11277,
+              "input_tokens": 3549,
+              "output_tokens": 482,
+              "cached_tokens": 3328,
+              "reasoning_tokens": 0,
+              "cost": 0.00057195
+            },
+            "context_tokens": 12263,
+            "context_utilization": 9.58046875,
+            "cumulative_cost": 0.0036202499999999998,
+            "cache_efficiency": 93.77289377289377
+          },
+          {
+            "turn_number": 8,
+            "role": "assistant",
+            "event": {
+              "id": "resp_0c0ae640b137c990006940ceea71d08198ad2dd8c477bf3258",
+              "timestamp": "2025-12-16T03:16:05.738Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11369,
+              "input_tokens": 4045,
+              "output_tokens": 649,
+              "cached_tokens": 3840,
+              "reasoning_tokens": 0,
+              "cost": 0.0007081500000000001
+            },
+            "context_tokens": 16308,
+            "context_utilization": 12.740625,
+            "cumulative_cost": 0.0043284,
+            "cache_efficiency": 94.93201483312733
+          }
+        ],
+        "summary": {
+          "total_turns": 8,
+          "total_tokens": 20837,
+          "total_cost": 0.0043284,
+          "avg_latency": 10971.5,
+          "avg_tokens_per_turn": 2604.625,
+          "context_growth_rate": 2038.5,
+          "cache_savings": 0.0008352000000000001
+        }
+      },
+      {
+        "type": "conversation",
+        "conversation_id": "conv-1765854965738-pokf70",
+        "user_id": "dev-2",
+        "started_at": "2025-12-16T03:16:05.738Z",
+        "ended_at": "2025-12-16T03:17:33.582Z",
+        "turns": [
+          {
+            "turn_number": 1,
+            "role": "user",
+            "event": {
+              "id": "resp_0a411067460f780d006940cef5c7f8819882f09cb4e5405a9e",
+              "timestamp": "2025-12-16T03:16:11.125Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 5387,
+              "input_tokens": 45,
+              "output_tokens": 249,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00015614999999999997
+            },
+            "context_tokens": 45,
+            "context_utilization": 0.03515625,
+            "cumulative_cost": 0.00015614999999999997,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 2,
+            "role": "assistant",
+            "event": {
+              "id": "resp_0a411067460f780d006940cefb2b048198b2125909159c7284",
+              "timestamp": "2025-12-16T03:16:21.886Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 10761,
+              "input_tokens": 311,
+              "output_tokens": 719,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00047805000000000005
+            },
+            "context_tokens": 356,
+            "context_utilization": 0.278125,
+            "cumulative_cost": 0.0006342,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 3,
+            "role": "user",
+            "event": {
+              "id": "resp_0a411067460f780d006940cf05f2588198a47de52ec7f168ce",
+              "timestamp": "2025-12-16T03:16:34.703Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 12817,
+              "input_tokens": 1046,
+              "output_tokens": 653,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0005487000000000001
+            },
+            "context_tokens": 1402,
+            "context_utilization": 1.0953125,
+            "cumulative_cost": 0.0011829000000000002,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 4,
+            "role": "assistant",
+            "event": {
+              "id": "resp_0a411067460f780d006940cf12c1dc8198bb517b3c9ece27fc",
+              "timestamp": "2025-12-16T03:16:51.253Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 16550,
+              "input_tokens": 1713,
+              "output_tokens": 800,
+              "cached_tokens": 1536,
+              "reasoning_tokens": 0,
+              "cost": 0.00062175
+            },
+            "context_tokens": 3115,
+            "context_utilization": 2.43359375,
+            "cumulative_cost": 0.00180465,
+            "cache_efficiency": 89.66725043782837
+          },
+          {
+            "turn_number": 5,
+            "role": "user",
+            "event": {
+              "id": "resp_0a411067460f780d006940cf23534c8198bf86d47b658289b5",
+              "timestamp": "2025-12-16T03:16:58.173Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 6920,
+              "input_tokens": 2532,
+              "output_tokens": 331,
+              "cached_tokens": 2304,
+              "reasoning_tokens": 0,
+              "cost": 0.0004056
+            },
+            "context_tokens": 5647,
+            "context_utilization": 4.41171875,
+            "cumulative_cost": 0.00221025,
+            "cache_efficiency": 90.99526066350711
+          },
+          {
+            "turn_number": 6,
+            "role": "assistant",
+            "event": {
+              "id": "resp_0a411067460f780d006940cf2a3b688198b3a5aeed677b8427",
+              "timestamp": "2025-12-16T03:17:10.319Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 12146,
+              "input_tokens": 2878,
+              "output_tokens": 533,
+              "cached_tokens": 2688,
+              "reasoning_tokens": 0,
+              "cost": 0.0005499000000000001
+            },
+            "context_tokens": 8525,
+            "context_utilization": 6.66015625,
+            "cumulative_cost": 0.0027601500000000003,
+            "cache_efficiency": 93.39819318971509
+          },
+          {
+            "turn_number": 7,
+            "role": "user",
+            "event": {
+              "id": "resp_0a411067460f780d006940cf365c10819896dbd4050f01c74e",
+              "timestamp": "2025-12-16T03:17:20.569Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 10250,
+              "input_tokens": 3432,
+              "output_tokens": 367,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.000735
+            },
+            "context_tokens": 11957,
+            "context_utilization": 9.34140625,
+            "cumulative_cost": 0.0034951500000000003,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 8,
+            "role": "assistant",
+            "event": {
+              "id": "resp_0a411067460f780d006940cf409cb081988b57e4173e5b9711",
+              "timestamp": "2025-12-16T03:17:33.582Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 13013,
+              "input_tokens": 3813,
+              "output_tokens": 672,
+              "cached_tokens": 3200,
+              "reasoning_tokens": 0,
+              "cost": 0.00073515
+            },
+            "context_tokens": 15770,
+            "context_utilization": 12.3203125,
+            "cumulative_cost": 0.0042303,
+            "cache_efficiency": 83.92341987936008
+          }
+        ],
+        "summary": {
+          "total_turns": 8,
+          "total_tokens": 20094,
+          "total_cost": 0.0042303,
+          "avg_latency": 10980.5,
+          "avg_tokens_per_turn": 2511.75,
+          "context_growth_rate": 1971.25,
+          "cache_savings": 0.0007296
+        }
+      },
+      {
+        "type": "conversation",
+        "conversation_id": "conv-1765855053582-fn7au5",
+        "user_id": "dev-3",
+        "started_at": "2025-12-16T03:17:33.582Z",
+        "ended_at": "2025-12-16T03:18:46.306Z",
+        "turns": [
+          {
+            "turn_number": 1,
+            "role": "user",
+            "event": {
+              "id": "resp_06fac99a3ffd8733006940cf4d9ea08198aead2285b8cb5cb6",
+              "timestamp": "2025-12-16T03:17:38.623Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 5041,
+              "input_tokens": 44,
+              "output_tokens": 218,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0001374
+            },
+            "context_tokens": 44,
+            "context_utilization": 0.034374999999999996,
+            "cumulative_cost": 0.0001374,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 2,
+            "role": "assistant",
+            "event": {
+              "id": "resp_06fac99a3ffd8733006940cf52ace88198ab6f9564b5159c6e",
+              "timestamp": "2025-12-16T03:17:53.082Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 14459,
+              "input_tokens": 279,
+              "output_tokens": 783,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0005116499999999999
+            },
+            "context_tokens": 323,
+            "context_utilization": 0.25234375000000003,
+            "cumulative_cost": 0.0006490499999999999,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 3,
+            "role": "user",
+            "event": {
+              "id": "resp_06fac99a3ffd8733006940cf6121d0819883113b0e0d8ebb2a",
+              "timestamp": "2025-12-16T03:18:07.990Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 14908,
+              "input_tokens": 1078,
+              "output_tokens": 628,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0005385
+            },
+            "context_tokens": 1401,
+            "context_utilization": 1.09453125,
+            "cumulative_cost": 0.0011875499999999999,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 4,
+            "role": "assistant",
+            "event": {
+              "id": "resp_06fac99a3ffd8733006940cf700e088198bd8c5b40cfed8fa4",
+              "timestamp": "2025-12-16T03:18:21.115Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 13125,
+              "input_tokens": 1720,
+              "output_tokens": 654,
+              "cached_tokens": 1536,
+              "reasoning_tokens": 0,
+              "cost": 0.0005352
+            },
+            "context_tokens": 3121,
+            "context_utilization": 2.43828125,
+            "cumulative_cost": 0.0017227499999999999,
+            "cache_efficiency": 89.30232558139535
+          },
+          {
+            "turn_number": 5,
+            "role": "user",
+            "event": {
+              "id": "resp_06fac99a3ffd8733006940cf7d2780819880dbe4b44486fb2b",
+              "timestamp": "2025-12-16T03:18:29.856Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 8740,
+              "input_tokens": 2392,
+              "output_tokens": 349,
+              "cached_tokens": 2176,
+              "reasoning_tokens": 0,
+              "cost": 0.000405
+            },
+            "context_tokens": 5513,
+            "context_utilization": 4.30703125,
+            "cumulative_cost": 0.00212775,
+            "cache_efficiency": 90.96989966555184
+          },
+          {
+            "turn_number": 6,
+            "role": "assistant",
+            "event": {
+              "id": "resp_06fac99a3ffd8733006940cf85e6d48198a63318fecc0085f6",
+              "timestamp": "2025-12-16T03:18:39.722Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 9866,
+              "input_tokens": 2756,
+              "output_tokens": 538,
+              "cached_tokens": 2560,
+              "reasoning_tokens": 0,
+              "cost": 0.0005442
+            },
+            "context_tokens": 8269,
+            "context_utilization": 6.46015625,
+            "cumulative_cost": 0.0026719499999999998,
+            "cache_efficiency": 92.88824383164005
+          },
+          {
+            "turn_number": 7,
+            "role": "user",
+            "event": {
+              "id": "resp_06fac99a3ffd8733006940cf8fc6408198b4fd82060618e584",
+              "timestamp": "2025-12-16T03:18:46.306Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 6584,
+              "input_tokens": 3315,
+              "output_tokens": 333,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00069705
+            },
+            "context_tokens": 11584,
+            "context_utilization": 9.049999999999999,
+            "cumulative_cost": 0.0033689999999999996,
+            "cache_efficiency": 0
+          }
+        ],
+        "summary": {
+          "total_turns": 7,
+          "total_tokens": 15087,
+          "total_cost": 0.0033689999999999996,
+          "avg_latency": 10389,
+          "avg_tokens_per_turn": 2155.285714285714,
+          "context_growth_rate": 1654.857142857143,
+          "cache_savings": 0.0004704
+        }
+      },
+      {
+        "type": "conversation",
+        "conversation_id": "conv-1765855126306-cltoo2",
+        "user_id": "dev-4",
+        "started_at": "2025-12-16T03:18:46.306Z",
+        "ended_at": "2025-12-16T03:20:00.194Z",
+        "turns": [
+          {
+            "turn_number": 1,
+            "role": "user",
+            "event": {
+              "id": "resp_08927c9d7893afbb006940cf965a84819b87b66702403a4356",
+              "timestamp": "2025-12-16T03:18:49.857Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 3551,
+              "input_tokens": 46,
+              "output_tokens": 155,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0000999
+            },
+            "context_tokens": 46,
+            "context_utilization": 0.0359375,
+            "cumulative_cost": 0.0000999,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 2,
+            "role": "assistant",
+            "event": {
+              "id": "resp_08927c9d7893afbb006940cf99e488819b8281cce13e7be307",
+              "timestamp": "2025-12-16T03:19:02.110Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 12253,
+              "input_tokens": 218,
+              "output_tokens": 644,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0004191
+            },
+            "context_tokens": 264,
+            "context_utilization": 0.20625000000000002,
+            "cumulative_cost": 0.000519,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 3,
+            "role": "user",
+            "event": {
+              "id": "resp_08927c9d7893afbb006940cfa62a44819b8a216655aaa5315a",
+              "timestamp": "2025-12-16T03:19:14.897Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 12787,
+              "input_tokens": 878,
+              "output_tokens": 587,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00048389999999999994
+            },
+            "context_tokens": 1142,
+            "context_utilization": 0.8921874999999999,
+            "cumulative_cost": 0.0010029,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 4,
+            "role": "assistant",
+            "event": {
+              "id": "resp_08927c9d7893afbb006940cfb2f39c819ba612c4a7566937d0",
+              "timestamp": "2025-12-16T03:19:27.740Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 12843,
+              "input_tokens": 1479,
+              "output_tokens": 621,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0005944500000000001
+            },
+            "context_tokens": 2621,
+            "context_utilization": 2.04765625,
+            "cumulative_cost": 0.00159735,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 5,
+            "role": "user",
+            "event": {
+              "id": "resp_08927c9d7893afbb006940cfbfcdd8819b8e3a3323b7321912",
+              "timestamp": "2025-12-16T03:19:35.726Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 7986,
+              "input_tokens": 2118,
+              "output_tokens": 364,
+              "cached_tokens": 1920,
+              "reasoning_tokens": 0,
+              "cost": 0.0003921
+            },
+            "context_tokens": 4739,
+            "context_utilization": 3.70234375,
+            "cumulative_cost": 0.00198945,
+            "cache_efficiency": 90.6515580736544
+          },
+          {
+            "turn_number": 6,
+            "role": "assistant",
+            "event": {
+              "id": "resp_08927c9d7893afbb006940cfc7c7c8819b80937ed9fb974d2f",
+              "timestamp": "2025-12-16T03:19:51.244Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 15517,
+              "input_tokens": 2497,
+              "output_tokens": 604,
+              "cached_tokens": 2304,
+              "reasoning_tokens": 0,
+              "cost": 0.00056415
+            },
+            "context_tokens": 7236,
+            "context_utilization": 5.653125,
+            "cumulative_cost": 0.0025535999999999996,
+            "cache_efficiency": 92.27072486984382
+          },
+          {
+            "turn_number": 7,
+            "role": "user",
+            "event": {
+              "id": "resp_08927c9d7893afbb006940cfd7492c819bbcf6a69ffde93850",
+              "timestamp": "2025-12-16T03:20:00.194Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 8950,
+              "input_tokens": 3122,
+              "output_tokens": 412,
+              "cached_tokens": 2944,
+              "reasoning_tokens": 0,
+              "cost": 0.0004947
+            },
+            "context_tokens": 10358,
+            "context_utilization": 8.0921875,
+            "cumulative_cost": 0.0030482999999999994,
+            "cache_efficiency": 94.2985265855221
+          }
+        ],
+        "summary": {
+          "total_turns": 7,
+          "total_tokens": 13745,
+          "total_cost": 0.0030482999999999994,
+          "avg_latency": 10555.285714285714,
+          "avg_tokens_per_turn": 1963.5714285714287,
+          "context_growth_rate": 1479.7142857142858,
+          "cache_savings": 0.0005376000000000001
+        }
+      },
+      {
+        "type": "conversation",
+        "conversation_id": "conv-1765855200194-vqrhkt",
+        "user_id": "dev-5",
+        "started_at": "2025-12-16T03:20:00.194Z",
+        "ended_at": "2025-12-16T03:21:08.466Z",
+        "turns": [
+          {
+            "turn_number": 1,
+            "role": "user",
+            "event": {
+              "id": "resp_032356fd397e5d29006940cfe0407c819599892daab26c5ea1",
+              "timestamp": "2025-12-16T03:20:05.246Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 5052,
+              "input_tokens": 45,
+              "output_tokens": 233,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00014654999999999998
+            },
+            "context_tokens": 45,
+            "context_utilization": 0.03515625,
+            "cumulative_cost": 0.00014654999999999998,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 2,
+            "role": "assistant",
+            "event": {
+              "id": "resp_032356fd397e5d29006940cfe54d3c819596f40de68c1c3b43",
+              "timestamp": "2025-12-16T03:20:18.793Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 13546,
+              "input_tokens": 295,
+              "output_tokens": 641,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00042885
+            },
+            "context_tokens": 340,
+            "context_utilization": 0.265625,
+            "cumulative_cost": 0.0005754,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 3,
+            "role": "user",
+            "event": {
+              "id": "resp_032356fd397e5d29006940cff2d5a4819584075604fdd313de",
+              "timestamp": "2025-12-16T03:20:31.658Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 12865,
+              "input_tokens": 952,
+              "output_tokens": 629,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0005202
+            },
+            "context_tokens": 1292,
+            "context_utilization": 1.0093750000000001,
+            "cumulative_cost": 0.0010956,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 4,
+            "role": "assistant",
+            "event": {
+              "id": "resp_032356fd397e5d29006940cfffb7bc81959d61ee2b05e33fa3",
+              "timestamp": "2025-12-16T03:20:47.045Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 15387,
+              "input_tokens": 1595,
+              "output_tokens": 800,
+              "cached_tokens": 1408,
+              "reasoning_tokens": 0,
+              "cost": 0.00061365
+            },
+            "context_tokens": 2887,
+            "context_utilization": 2.25546875,
+            "cumulative_cost": 0.0017092499999999998,
+            "cache_efficiency": 88.27586206896552
+          },
+          {
+            "turn_number": 5,
+            "role": "user",
+            "event": {
+              "id": "resp_032356fd397e5d29006940d00f170c81958dea027cfba93ff5",
+              "timestamp": "2025-12-16T03:20:55.944Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 8899,
+              "input_tokens": 2414,
+              "output_tokens": 407,
+              "cached_tokens": 2176,
+              "reasoning_tokens": 0,
+              "cost": 0.0004431
+            },
+            "context_tokens": 5301,
+            "context_utilization": 4.14140625,
+            "cumulative_cost": 0.00215235,
+            "cache_efficiency": 90.14084507042254
+          },
+          {
+            "turn_number": 6,
+            "role": "assistant",
+            "event": {
+              "id": "resp_032356fd397e5d29006940d01801048195b0905a8dc078a1d1",
+              "timestamp": "2025-12-16T03:21:08.466Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 12522,
+              "input_tokens": 2836,
+              "output_tokens": 614,
+              "cached_tokens": 2688,
+              "reasoning_tokens": 0,
+              "cost": 0.0005922
+            },
+            "context_tokens": 8137,
+            "context_utilization": 6.35703125,
+            "cumulative_cost": 0.00274455,
+            "cache_efficiency": 94.78138222849083
+          }
+        ],
+        "summary": {
+          "total_turns": 6,
+          "total_tokens": 11461,
+          "total_cost": 0.00274455,
+          "avg_latency": 11378.5,
+          "avg_tokens_per_turn": 1910.1666666666667,
+          "context_growth_rate": 1356.1666666666667,
+          "cache_savings": 0.00047039999999999994
+        }
+      },
+      {
+        "type": "conversation",
+        "conversation_id": "conv-1765855268466-1bok8j",
+        "user_id": "dev-6",
+        "started_at": "2025-12-16T03:21:08.466Z",
+        "ended_at": "2025-12-16T03:22:00.109Z",
+        "turns": [
+          {
+            "turn_number": 1,
+            "role": "user",
+            "event": {
+              "id": "resp_02db6075e7e703b6006940d024809481989b7997d17d338d71",
+              "timestamp": "2025-12-16T03:21:11.986Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 3520,
+              "input_tokens": 47,
+              "output_tokens": 216,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00013665
+            },
+            "context_tokens": 47,
+            "context_utilization": 0.03671875,
+            "cumulative_cost": 0.00013665,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 2,
+            "role": "assistant",
+            "event": {
+              "id": "resp_02db6075e7e703b6006940d02806cc8198b09268e2aeac121e",
+              "timestamp": "2025-12-16T03:21:23.669Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11683,
+              "input_tokens": 280,
+              "output_tokens": 549,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0003714
+            },
+            "context_tokens": 327,
+            "context_utilization": 0.25546875,
+            "cumulative_cost": 0.0005080499999999999,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 3,
+            "role": "user",
+            "event": {
+              "id": "resp_02db6075e7e703b6006940d033b62c8198a9cd518fa1a7ae3f",
+              "timestamp": "2025-12-16T03:21:33.372Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 9703,
+              "input_tokens": 845,
+              "output_tokens": 515,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00043575000000000005
+            },
+            "context_tokens": 1172,
+            "context_utilization": 0.9156249999999999,
+            "cumulative_cost": 0.0009438,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 4,
+            "role": "assistant",
+            "event": {
+              "id": "resp_02db6075e7e703b6006940d03d6d44819883167b8206b935ac",
+              "timestamp": "2025-12-16T03:21:44.967Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11595,
+              "input_tokens": 1374,
+              "output_tokens": 614,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0005744999999999999
+            },
+            "context_tokens": 2546,
+            "context_utilization": 1.9890625,
+            "cumulative_cost": 0.0015182999999999998,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 5,
+            "role": "user",
+            "event": {
+              "id": "resp_02db6075e7e703b6006940d04905a8819884cced0448c59bbb",
+              "timestamp": "2025-12-16T03:21:51.152Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 6185,
+              "input_tokens": 2006,
+              "output_tokens": 296,
+              "cached_tokens": 1152,
+              "reasoning_tokens": 0,
+              "cost": 0.0003921
+            },
+            "context_tokens": 4552,
+            "context_utilization": 3.5562499999999995,
+            "cumulative_cost": 0.0019103999999999998,
+            "cache_efficiency": 57.42771684945165
+          },
+          {
+            "turn_number": 6,
+            "role": "assistant",
+            "event": {
+              "id": "resp_02db6075e7e703b6006940d04f30ac8198b1fac412267b4f7e",
+              "timestamp": "2025-12-16T03:22:00.109Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 8957,
+              "input_tokens": 2317,
+              "output_tokens": 540,
+              "cached_tokens": 2176,
+              "reasoning_tokens": 0,
+              "cost": 0.00050835
+            },
+            "context_tokens": 6869,
+            "context_utilization": 5.36640625,
+            "cumulative_cost": 0.00241875,
+            "cache_efficiency": 93.91454466983168
+          }
+        ],
+        "summary": {
+          "total_turns": 6,
+          "total_tokens": 9599,
+          "total_cost": 0.00241875,
+          "avg_latency": 8607.166666666666,
+          "avg_tokens_per_turn": 1599.8333333333333,
+          "context_growth_rate": 1144.8333333333333,
+          "cache_savings": 0.0002496
+        }
+      },
+      {
+        "type": "conversation",
+        "conversation_id": "conv-1765855320109-ibrbo6",
+        "user_id": "dev-7",
+        "started_at": "2025-12-16T03:22:00.109Z",
+        "ended_at": "2025-12-16T03:23:11.910Z",
+        "turns": [
+          {
+            "turn_number": 1,
+            "role": "user",
+            "event": {
+              "id": "resp_01965df98ebb5149006940d0582a288194ae5271ff9b8079ff",
+              "timestamp": "2025-12-16T03:22:03.396Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 3287,
+              "input_tokens": 49,
+              "output_tokens": 298,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00018614999999999997
+            },
+            "context_tokens": 49,
+            "context_utilization": 0.03828125,
+            "cumulative_cost": 0.00018614999999999997,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 2,
+            "role": "assistant",
+            "event": {
+              "id": "resp_01965df98ebb5149006940d05b6ec481948c137cb952645768",
+              "timestamp": "2025-12-16T03:22:20.651Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 17255,
+              "input_tokens": 364,
+              "output_tokens": 785,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0005256
+            },
+            "context_tokens": 413,
+            "context_utilization": 0.32265625,
+            "cumulative_cost": 0.0007117499999999999,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 3,
+            "role": "user",
+            "event": {
+              "id": "resp_01965df98ebb5149006940d06cb5248194a9c308fdce14d19b",
+              "timestamp": "2025-12-16T03:22:37.299Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 16648,
+              "input_tokens": 1165,
+              "output_tokens": 696,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00059235
+            },
+            "context_tokens": 1578,
+            "context_utilization": 1.2328125,
+            "cumulative_cost": 0.0013040999999999999,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 4,
+            "role": "assistant",
+            "event": {
+              "id": "resp_01965df98ebb5149006940d07d5db4819492b9e547c186a35c",
+              "timestamp": "2025-12-16T03:22:52.643Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 15344,
+              "input_tokens": 1875,
+              "output_tokens": 800,
+              "cached_tokens": 1664,
+              "reasoning_tokens": 0,
+              "cost": 0.00063645
+            },
+            "context_tokens": 3453,
+            "context_utilization": 2.69765625,
+            "cumulative_cost": 0.0019405499999999999,
+            "cache_efficiency": 88.74666666666667
+          },
+          {
+            "turn_number": 5,
+            "role": "user",
+            "event": {
+              "id": "resp_01965df98ebb5149006940d08cb01081949024263a3bed8a98",
+              "timestamp": "2025-12-16T03:22:59.116Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 6473,
+              "input_tokens": 2694,
+              "output_tokens": 308,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0005889000000000001
+            },
+            "context_tokens": 6147,
+            "context_utilization": 4.80234375,
+            "cumulative_cost": 0.00252945,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 6,
+            "role": "assistant",
+            "event": {
+              "id": "resp_01965df98ebb5149006940d0932aac8194953c14fa3ccb06d0",
+              "timestamp": "2025-12-16T03:23:11.910Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 12794,
+              "input_tokens": 3017,
+              "output_tokens": 604,
+              "cached_tokens": 2560,
+              "reasoning_tokens": 0,
+              "cost": 0.00062295
+            },
+            "context_tokens": 9164,
+            "context_utilization": 7.159375,
+            "cumulative_cost": 0.0031524,
+            "cache_efficiency": 84.85250248591316
+          }
+        ],
+        "summary": {
+          "total_turns": 6,
+          "total_tokens": 12655,
+          "total_cost": 0.0031524,
+          "avg_latency": 11966.833333333334,
+          "avg_tokens_per_turn": 2109.1666666666665,
+          "context_growth_rate": 1527.3333333333333,
+          "cache_savings": 0.0003168
+        }
+      },
+      {
+        "type": "conversation",
+        "conversation_id": "conv-1765855391910-7jv7qt",
+        "user_id": "dev-8",
+        "started_at": "2025-12-16T03:23:11.910Z",
+        "ended_at": "2025-12-16T03:24:01.125Z",
+        "turns": [
+          {
+            "turn_number": 1,
+            "role": "user",
+            "event": {
+              "id": "resp_07bb04f0f71ebb59006940d09ff624819b8b91c9c4d5eb1289",
+              "timestamp": "2025-12-16T03:23:15.037Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 3127,
+              "input_tokens": 43,
+              "output_tokens": 195,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00012345
+            },
+            "context_tokens": 43,
+            "context_utilization": 0.03359375,
+            "cumulative_cost": 0.00012345,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 2,
+            "role": "assistant",
+            "event": {
+              "id": "resp_07bb04f0f71ebb59006940d0a318a4819bb59368d598e98357",
+              "timestamp": "2025-12-16T03:23:26.629Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11592,
+              "input_tokens": 255,
+              "output_tokens": 665,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00043725
+            },
+            "context_tokens": 298,
+            "context_utilization": 0.23281249999999998,
+            "cumulative_cost": 0.0005606999999999999,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 3,
+            "role": "user",
+            "event": {
+              "id": "resp_07bb04f0f71ebb59006940d0aeacbc819ba59095ba4fca311f",
+              "timestamp": "2025-12-16T03:23:40.367Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 13738,
+              "input_tokens": 936,
+              "output_tokens": 655,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0005334
+            },
+            "context_tokens": 1234,
+            "context_utilization": 0.9640625,
+            "cumulative_cost": 0.0010940999999999998,
+            "cache_efficiency": 0
+          },
+          {
+            "turn_number": 4,
+            "role": "assistant",
+            "event": {
+              "id": "resp_07bb04f0f71ebb59006940d0bc6694819ba5f3a464ece2be28",
+              "timestamp": "2025-12-16T03:23:53.625Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 13258,
+              "input_tokens": 1605,
+              "output_tokens": 800,
+              "cached_tokens": 1408,
+              "reasoning_tokens": 0,
+              "cost": 0.00061515
+            },
+            "context_tokens": 2839,
+            "context_utilization": 2.21796875,
+            "cumulative_cost": 0.0017092499999999998,
+            "cache_efficiency": 87.72585669781931
+          },
+          {
+            "turn_number": 5,
+            "role": "user",
+            "event": {
+              "id": "resp_07bb04f0f71ebb59006940d0c9abcc819b9f9149ff144f48d6",
+              "timestamp": "2025-12-16T03:24:01.124Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 7499,
+              "input_tokens": 2424,
+              "output_tokens": 338,
+              "cached_tokens": 2176,
+              "reasoning_tokens": 0,
+              "cost": 0.00040319999999999993
+            },
+            "context_tokens": 5263,
+            "context_utilization": 4.11171875,
+            "cumulative_cost": 0.0021124499999999997,
+            "cache_efficiency": 89.76897689768977
+          }
+        ],
+        "summary": {
+          "total_turns": 5,
+          "total_tokens": 7916,
+          "total_cost": 0.0021124499999999997,
+          "avg_latency": 9842.8,
+          "avg_tokens_per_turn": 1583.2,
+          "context_growth_rate": 1052.6,
+          "cache_savings": 0.0002688
+        }
+      }
+    ],
+    "multi_tenant": {
+      "type": "multi_tenant",
+      "period_start": "2025-12-16T03:24:01.125Z",
+      "period_end": "2025-12-16T03:40:51.745Z",
+      "tenants": [
+        {
+          "tenant_id": "acme-corp",
+          "tenant_name": "Acme Corp",
+          "tier": "enterprise",
+          "users": [
+            {
+              "user_id": "Acme Corp-user-1",
+              "request_count": 10,
+              "total_tokens": 5314,
+              "total_cost": 0.0030471
+            },
+            {
+              "user_id": "Acme Corp-user-2",
+              "request_count": 10,
+              "total_tokens": 5328,
+              "total_cost": 0.0030492
+            }
+          ],
+          "events": [
+            {
+              "id": "resp_08e840b16646698f006940d0d12ee4819999194623fe4ce027",
+              "timestamp": "2025-12-16T03:24:07.877Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 6752,
+              "input_tokens": 33,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030494999999999996
+            },
+            {
+              "id": "resp_062e414c469b38ea006940d0d7ea4c819881cec7e6fc2bb1c0",
+              "timestamp": "2025-12-16T03:24:17.856Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 9979,
+              "input_tokens": 37,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030555
+            },
+            {
+              "id": "resp_0934934894c6d92b006940d0e1e9448197a97a240675f4addc",
+              "timestamp": "2025-12-16T03:24:27.688Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 9832,
+              "input_tokens": 35,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030524999999999997
+            },
+            {
+              "id": "resp_0ffe82161c271d73006940d0ebbac4819b9fc3babf8a6b7da7",
+              "timestamp": "2025-12-16T03:24:39.792Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 12104,
+              "input_tokens": 34,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0003051
+            },
+            {
+              "id": "resp_0b7cea7698d82b01006940d0f7d4fc819890709ad759551241",
+              "timestamp": "2025-12-16T03:24:50.489Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 10697,
+              "input_tokens": 31,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030464999999999995
+            },
+            {
+              "id": "resp_04e03e16b3f92154006940d1028900819b843f8d9df2651941",
+              "timestamp": "2025-12-16T03:25:01.751Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11262,
+              "input_tokens": 35,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030524999999999997
+            },
+            {
+              "id": "resp_05bc3d600546d6d2006940d10dcd848198bb5d8589bb29e9c1",
+              "timestamp": "2025-12-16T03:25:11.313Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 9562,
+              "input_tokens": 27,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030405
+            },
+            {
+              "id": "resp_07a2a38e6437307d006940d1175b34819bb095860d848fb139",
+              "timestamp": "2025-12-16T03:25:22.614Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11301,
+              "input_tokens": 30,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0003045
+            },
+            {
+              "id": "resp_046b0b9c0de64a7d006940d122b314819a96e83697fbfd6e4a",
+              "timestamp": "2025-12-16T03:25:35.049Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 12435,
+              "input_tokens": 31,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030464999999999995
+            },
+            {
+              "id": "resp_0ddfb8efd21b438d006940d12f1790819aa4b8b86a19195bd4",
+              "timestamp": "2025-12-16T03:25:44.227Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 9178,
+              "input_tokens": 28,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030419999999999997
+            },
+            {
+              "id": "resp_0a90b44d6c4c543f006940d13841e0819ab242473b931dec25",
+              "timestamp": "2025-12-16T03:25:55.466Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11239,
+              "input_tokens": 33,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030494999999999996
+            },
+            {
+              "id": "resp_07851a007ec0fe90006940d1438324819a96b17563372e6005",
+              "timestamp": "2025-12-16T03:26:06.227Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 10761,
+              "input_tokens": 37,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030555
+            },
+            {
+              "id": "resp_00b55a17a0217765006940d14e46f8819b94dc3a0beccef832",
+              "timestamp": "2025-12-16T03:26:17.906Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11679,
+              "input_tokens": 35,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030524999999999997
+            },
+            {
+              "id": "resp_04c4bf31f241b34f006940d159f50c8194a9ffdcef54e15ceb",
+              "timestamp": "2025-12-16T03:26:28.931Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11025,
+              "input_tokens": 34,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0003051
+            },
+            {
+              "id": "resp_0f6ab53274d2d5cb006940d164f8bc81988b69de971fccbbaa",
+              "timestamp": "2025-12-16T03:26:40.195Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11264,
+              "input_tokens": 31,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030464999999999995
+            },
+            {
+              "id": "resp_0eca8a596ff89495006940d17042c081968d87c355db3692b5",
+              "timestamp": "2025-12-16T03:26:50.129Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 9934,
+              "input_tokens": 35,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030524999999999997
+            },
+            {
+              "id": "resp_046de4cf29e38c98006940d17a2ae48198b1f89bc46bc206c1",
+              "timestamp": "2025-12-16T03:27:00.998Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 10869,
+              "input_tokens": 27,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030405
+            },
+            {
+              "id": "resp_011d56ac209473e8006940d1850884819bb9f6d8e0c8de3698",
+              "timestamp": "2025-12-16T03:27:06.718Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 5720,
+              "input_tokens": 30,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0003045
+            },
+            {
+              "id": "resp_0bb8c99ee6f35f47006940d18ac4308195aca662c8cf1e1135",
+              "timestamp": "2025-12-16T03:27:19.102Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 12384,
+              "input_tokens": 31,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030464999999999995
+            },
+            {
+              "id": "resp_0c612d00635f8154006940d19726a881908974150bc7f53f5d",
+              "timestamp": "2025-12-16T03:27:30.268Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11166,
+              "input_tokens": 28,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030419999999999997
+            }
+          ],
+          "summary": {
+            "total_requests": 20,
+            "total_tokens": 10642,
+            "total_cost": 0.006096300000000001,
+            "quota_used": 1.0642,
+            "quota_limit": 1000000,
+            "avg_cost_per_request": 0.00030481500000000006,
+            "peak_requests_per_minute": 20
+          }
+        },
+        {
+          "tenant_id": "techgiant-inc",
+          "tenant_name": "TechGiant Inc",
+          "tier": "enterprise",
+          "users": [
+            {
+              "user_id": "TechGiant Inc-user-1",
+              "request_count": 9,
+              "total_tokens": 4783,
+              "total_cost": 0.00274245
+            },
+            {
+              "user_id": "TechGiant Inc-user-2",
+              "request_count": 9,
+              "total_tokens": 4800,
+              "total_cost": 0.002745
+            }
+          ],
+          "events": [
+            {
+              "id": "resp_099cd581453c3682006940d1a24f708199bf3062ba1bca4f72",
+              "timestamp": "2025-12-16T03:27:40.538Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 10269,
+              "input_tokens": 33,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030494999999999996
+            },
+            {
+              "id": "resp_051365bf53bbd5d2006940d1ac965c8199a0821afe0a8e15d6",
+              "timestamp": "2025-12-16T03:27:50.490Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 9952,
+              "input_tokens": 37,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030555
+            },
+            {
+              "id": "resp_02f42f9d67ec23e6006940d1b689f08199863bdc200d5fc4c8",
+              "timestamp": "2025-12-16T03:27:59.450Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 8960,
+              "input_tokens": 35,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030524999999999997
+            },
+            {
+              "id": "resp_07294023d20baf5f006940d1bf7e0c819b91beb5f5bc2dbc21",
+              "timestamp": "2025-12-16T03:28:08.699Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 9249,
+              "input_tokens": 34,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0003051
+            },
+            {
+              "id": "resp_02f045c4ffe00db2006940d1c8c0f481949c7cbaa7a49f2c0e",
+              "timestamp": "2025-12-16T03:28:18.324Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 9625,
+              "input_tokens": 31,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030464999999999995
+            },
+            {
+              "id": "resp_03e9501d877210ac006940d1d25bf0819abdd3898b44758068",
+              "timestamp": "2025-12-16T03:28:27.584Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 9260,
+              "input_tokens": 35,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030524999999999997
+            },
+            {
+              "id": "resp_0d99909658fa9006006940d1dba7848194b8d3418b269021f6",
+              "timestamp": "2025-12-16T03:28:37.783Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 10199,
+              "input_tokens": 27,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030405
+            },
+            {
+              "id": "resp_088c6337d7494bd3006940d1e5d84081978df29a067c186837",
+              "timestamp": "2025-12-16T03:28:49.016Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11233,
+              "input_tokens": 30,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0003045
+            },
+            {
+              "id": "resp_016dcd70b6ac0a1b006940d1f10fa8819aac38b882bd96e314",
+              "timestamp": "2025-12-16T03:28:58.225Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 9209,
+              "input_tokens": 31,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030464999999999995
+            },
+            {
+              "id": "resp_0eb6d951970a0336006940d1fa457081968ca25445f4e51d9f",
+              "timestamp": "2025-12-16T03:29:12.160Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 13935,
+              "input_tokens": 28,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030419999999999997
+            },
+            {
+              "id": "resp_088fa4afcfefa6e8006940d2083114819a9d98766928c99193",
+              "timestamp": "2025-12-16T03:29:23.189Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11029,
+              "input_tokens": 33,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030494999999999996
+            },
+            {
+              "id": "resp_0b7c0ec6f048d941006940d2133af0819ab54a38b6dcc55663",
+              "timestamp": "2025-12-16T03:29:34.269Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11080,
+              "input_tokens": 37,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030555
+            },
+            {
+              "id": "resp_06c073a2903be09b006940d21e51248196bc34c96705431293",
+              "timestamp": "2025-12-16T03:29:45.439Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11170,
+              "input_tokens": 35,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030524999999999997
+            },
+            {
+              "id": "resp_00e2a85303e0c8a4006940d2297e0c8193bc24abe9aa57c1ca",
+              "timestamp": "2025-12-16T03:29:55.939Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 10500,
+              "input_tokens": 34,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0003051
+            },
+            {
+              "id": "resp_096058ac1a4f0a2d006940d233fdec81908c4478ed6aeb06ec",
+              "timestamp": "2025-12-16T03:30:09.843Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 13904,
+              "input_tokens": 31,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030464999999999995
+            },
+            {
+              "id": "resp_0fe31a9f84e09ae7006940d241ea38819390e6a5fb728ff1a9",
+              "timestamp": "2025-12-16T03:30:23.963Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 14120,
+              "input_tokens": 35,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030524999999999997
+            },
+            {
+              "id": "resp_07892ed9c998fbcf006940d24ffdac8198a5ba8beb271d7c16",
+              "timestamp": "2025-12-16T03:30:37.689Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 13726,
+              "input_tokens": 27,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030405
+            },
+            {
+              "id": "resp_07270be6ecdb5242006940d25dbecc8199ac280d46126e16e9",
+              "timestamp": "2025-12-16T03:30:49.673Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11984,
+              "input_tokens": 30,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0003045
+            }
+          ],
+          "summary": {
+            "total_requests": 18,
+            "total_tokens": 9583,
+            "total_cost": 0.0054874500000000005,
+            "quota_used": 0.9582999999999999,
+            "quota_limit": 1000000,
+            "avg_cost_per_request": 0.00030485833333333335,
+            "peak_requests_per_minute": 18
+          }
+        },
+        {
+          "tenant_id": "globalfinance-ltd",
+          "tenant_name": "GlobalFinance Ltd",
+          "tier": "enterprise",
+          "users": [
+            {
+              "user_id": "GlobalFinance Ltd-user-1",
+              "request_count": 8,
+              "total_tokens": 4256,
+              "total_cost": 0.0024384
+            },
+            {
+              "user_id": "GlobalFinance Ltd-user-2",
+              "request_count": 7,
+              "total_tokens": 3735,
+              "total_cost": 0.00213525
+            }
+          ],
+          "events": [
+            {
+              "id": "resp_026543f43a455b7b006940d269b9148190baff67fc1192d512",
+              "timestamp": "2025-12-16T03:31:01.316Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11643,
+              "input_tokens": 33,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030494999999999996
+            },
+            {
+              "id": "resp_047d6a2d6ab1a31c006940d2755e348195b3cfe0d35820bab2",
+              "timestamp": "2025-12-16T03:31:15.417Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 14101,
+              "input_tokens": 37,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030555
+            },
+            {
+              "id": "resp_0ce3fffef2af312a006940d28378bc819bab725669c3e8ab5f",
+              "timestamp": "2025-12-16T03:31:25.786Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 10369,
+              "input_tokens": 35,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030524999999999997
+            },
+            {
+              "id": "resp_0f017351e1b15a9a006940d28dd6408198b86a785c63463875",
+              "timestamp": "2025-12-16T03:31:35.843Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 10057,
+              "input_tokens": 34,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0003051
+            },
+            {
+              "id": "resp_01729412dc18b21c006940d297e40c81909f402bf1bb25937b",
+              "timestamp": "2025-12-16T03:31:45.207Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 9364,
+              "input_tokens": 31,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030464999999999995
+            },
+            {
+              "id": "resp_0c7ca7db8f613c0c006940d2a140908195abbc1f60229ba83a",
+              "timestamp": "2025-12-16T03:31:56.816Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11609,
+              "input_tokens": 35,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030524999999999997
+            },
+            {
+              "id": "resp_0ee32006f920671f006940d2acdf8c8197905f6b2f69215adc",
+              "timestamp": "2025-12-16T03:32:06.482Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 9666,
+              "input_tokens": 27,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030405
+            },
+            {
+              "id": "resp_015a51a6832d2b6e006940d2b68668819b8ca27afb6e6e45bb",
+              "timestamp": "2025-12-16T03:32:14.833Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 8351,
+              "input_tokens": 30,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0003045
+            },
+            {
+              "id": "resp_039810a7a5e4606e006940d2bee630819a8e5c4062a837031a",
+              "timestamp": "2025-12-16T03:32:26.706Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11873,
+              "input_tokens": 31,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030464999999999995
+            },
+            {
+              "id": "resp_0352eeb686914625006940d2cac2c08195903fad45c35e6459",
+              "timestamp": "2025-12-16T03:32:37.745Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11039,
+              "input_tokens": 28,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030419999999999997
+            },
+            {
+              "id": "resp_0d5bc4e857fec37c006940d2d5c708819bbed7cd566ca78bd9",
+              "timestamp": "2025-12-16T03:32:46.894Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 9149,
+              "input_tokens": 33,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030494999999999996
+            },
+            {
+              "id": "resp_0851001c7b255111006940d2def5388197b5a5ebbb857b64b8",
+              "timestamp": "2025-12-16T03:33:05.128Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 18234,
+              "input_tokens": 37,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030555
+            },
+            {
+              "id": "resp_0a4523b04de38441006940d2f12c308199b7fe308876850b09",
+              "timestamp": "2025-12-16T03:33:17.550Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 12422,
+              "input_tokens": 35,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030524999999999997
+            },
+            {
+              "id": "resp_09d9e719fa6a512c006940d2fd97888199891b42e5e446b50b",
+              "timestamp": "2025-12-16T03:33:33.893Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 16343,
+              "input_tokens": 34,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0003051
+            },
+            {
+              "id": "resp_0800f5d048cfb87d006940d30deffc81989ac9555700fa9918",
+              "timestamp": "2025-12-16T03:33:45.815Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11922,
+              "input_tokens": 31,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030464999999999995
+            }
+          ],
+          "summary": {
+            "total_requests": 15,
+            "total_tokens": 7991,
+            "total_cost": 0.00457365,
+            "quota_used": 0.7991,
+            "quota_limit": 1000000,
+            "avg_cost_per_request": 0.00030491000000000003,
+            "peak_requests_per_minute": 15
+          }
+        },
+        {
+          "tenant_id": "startupxyz",
+          "tenant_name": "StartupXYZ",
+          "tier": "pro",
+          "users": [
+            {
+              "user_id": "StartupXYZ-user-1",
+              "request_count": 6,
+              "total_tokens": 3190,
+              "total_cost": 0.0018284999999999998
+            },
+            {
+              "user_id": "StartupXYZ-user-2",
+              "request_count": 6,
+              "total_tokens": 3201,
+              "total_cost": 0.0018301499999999998
+            }
+          ],
+          "events": [
+            {
+              "id": "resp_05058446ab830e3f006940d319ded881958f6474fb8c300847",
+              "timestamp": "2025-12-16T03:33:55.246Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 9430,
+              "input_tokens": 33,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030494999999999996
+            },
+            {
+              "id": "resp_0557661a57ea77cb006940d323492881999ed390b500d9fe56",
+              "timestamp": "2025-12-16T03:34:05.651Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 10405,
+              "input_tokens": 37,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030555
+            },
+            {
+              "id": "resp_012a1ad7f23b8e7a006940d32db5b481958e13730fce8bab31",
+              "timestamp": "2025-12-16T03:34:16.892Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11241,
+              "input_tokens": 35,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030524999999999997
+            },
+            {
+              "id": "resp_09490b7f5ec8788b006940d338f6108193a259cbfdc4cced9a",
+              "timestamp": "2025-12-16T03:34:30.276Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 13384,
+              "input_tokens": 34,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0003051
+            },
+            {
+              "id": "resp_0f1538bc6f2e54fb006940d34650b0819b8a555c85db14612d",
+              "timestamp": "2025-12-16T03:34:39.237Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 8961,
+              "input_tokens": 31,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030464999999999995
+            },
+            {
+              "id": "resp_0aaf9177e3a70614006940d34f62b88193b856b49a4d3ea718",
+              "timestamp": "2025-12-16T03:34:49.636Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 10399,
+              "input_tokens": 35,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030524999999999997
+            },
+            {
+              "id": "resp_04661d0f3f198073006940d359ab00819a9b9c53fc7bc91ad4",
+              "timestamp": "2025-12-16T03:35:01.074Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11438,
+              "input_tokens": 27,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030405
+            },
+            {
+              "id": "resp_0cd11205cc104978006940d36522848193a85ba7d7339147a5",
+              "timestamp": "2025-12-16T03:35:12.355Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11281,
+              "input_tokens": 30,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0003045
+            },
+            {
+              "id": "resp_00ec9b438cfeac61006940d370646c819b96c3ab3924c4b460",
+              "timestamp": "2025-12-16T03:35:21.217Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 8862,
+              "input_tokens": 31,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030464999999999995
+            },
+            {
+              "id": "resp_0d4d123bb5de3d66006940d379446481909678c1534a9c09d1",
+              "timestamp": "2025-12-16T03:35:31.049Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 9832,
+              "input_tokens": 28,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030419999999999997
+            },
+            {
+              "id": "resp_03c515f2d779f99f006940d38316748199a0d22c4db50ac6b0",
+              "timestamp": "2025-12-16T03:35:43.904Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 12855,
+              "input_tokens": 33,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030494999999999996
+            },
+            {
+              "id": "resp_0d7ae886e6de1297006940d38ff62c8196a11024926fb60603",
+              "timestamp": "2025-12-16T03:35:54.419Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 10514,
+              "input_tokens": 37,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030555
+            }
+          ],
+          "summary": {
+            "total_requests": 12,
+            "total_tokens": 6391,
+            "total_cost": 0.0036586500000000003,
+            "quota_used": 6.390999999999999,
+            "quota_limit": 100000,
+            "avg_cost_per_request": 0.0003048875,
+            "peak_requests_per_minute": 12
+          }
+        },
+        {
+          "tenant_id": "devshop-pro",
+          "tenant_name": "DevShop Pro",
+          "tier": "pro",
+          "users": [
+            {
+              "user_id": "DevShop Pro-user-1",
+              "request_count": 5,
+              "total_tokens": 2657,
+              "total_cost": 0.0015235499999999998
+            },
+            {
+              "user_id": "DevShop Pro-user-2",
+              "request_count": 5,
+              "total_tokens": 2664,
+              "total_cost": 0.0015245999999999999
+            }
+          ],
+          "events": [
+            {
+              "id": "resp_0bbd28510d1966c6006940d39a7450819a92c3a4cd7fc87936",
+              "timestamp": "2025-12-16T03:36:06.479Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 12060,
+              "input_tokens": 33,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030494999999999996
+            },
+            {
+              "id": "resp_03e298b33d37768f006940d3a68534819ab7a37575035e660d",
+              "timestamp": "2025-12-16T03:36:18.766Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 12287,
+              "input_tokens": 37,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030555
+            },
+            {
+              "id": "resp_0bbfa2b5b65cd3f7006940d3b2cd24819baaaab4384cb2334d",
+              "timestamp": "2025-12-16T03:36:26.938Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 8172,
+              "input_tokens": 35,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030524999999999997
+            },
+            {
+              "id": "resp_09c0c4da9ad023ec006940d3bafae8819a999572d08943b058",
+              "timestamp": "2025-12-16T03:36:36.447Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 9509,
+              "input_tokens": 34,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0003051
+            },
+            {
+              "id": "resp_046b7747b56aefc4006940d3c480388195b15dd64cf4a3cb15",
+              "timestamp": "2025-12-16T03:36:47.907Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11460,
+              "input_tokens": 31,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030464999999999995
+            },
+            {
+              "id": "resp_0f880649d414e2f9006940d3cff36c819bae85accd73161c5d",
+              "timestamp": "2025-12-16T03:36:55.985Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 8078,
+              "input_tokens": 35,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030524999999999997
+            },
+            {
+              "id": "resp_0dc1c91eab95de6f006940d3d80960819088e2165fe3555c1a",
+              "timestamp": "2025-12-16T03:37:07.465Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11480,
+              "input_tokens": 27,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030405
+            },
+            {
+              "id": "resp_05e4dacbf551949a006940d3e38000819891cf5dbdb8d50a63",
+              "timestamp": "2025-12-16T03:37:18.367Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 10902,
+              "input_tokens": 30,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0003045
+            },
+            {
+              "id": "resp_0fb39fa3f54d5bc8006940d3ee668481999d7eff722221378e",
+              "timestamp": "2025-12-16T03:37:32.587Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 14220,
+              "input_tokens": 31,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030464999999999995
+            },
+            {
+              "id": "resp_05ea51e24482aad1006940d3fca2bc8194ba38cb3172c2e525",
+              "timestamp": "2025-12-16T03:37:44.479Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11892,
+              "input_tokens": 28,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030419999999999997
+            }
+          ],
+          "summary": {
+            "total_requests": 10,
+            "total_tokens": 5321,
+            "total_cost": 0.0030481500000000003,
+            "quota_used": 5.321,
+            "quota_limit": 100000,
+            "avg_cost_per_request": 0.00030481500000000006,
+            "peak_requests_per_minute": 10
+          }
+        },
+        {
+          "tenant_id": "innovatetech",
+          "tenant_name": "InnovateTech",
+          "tier": "pro",
+          "users": [
+            {
+              "user_id": "InnovateTech-user-1",
+              "request_count": 4,
+              "total_tokens": 2126,
+              "total_cost": 0.0012189
+            },
+            {
+              "user_id": "InnovateTech-user-2",
+              "request_count": 4,
+              "total_tokens": 2136,
+              "total_cost": 0.0012204
+            }
+          ],
+          "events": [
+            {
+              "id": "resp_0ce7e298351df7c6006940d40886488194bb74f607d7011c32",
+              "timestamp": "2025-12-16T03:37:54.413Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 9934,
+              "input_tokens": 33,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030494999999999996
+            },
+            {
+              "id": "resp_07ee0f1dae480a44006940d41277848194853a836bf8939bee",
+              "timestamp": "2025-12-16T03:38:04.239Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 9826,
+              "input_tokens": 37,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030555
+            },
+            {
+              "id": "resp_02672036cd90a86f006940d41c4a6c819992d604266f7a3433",
+              "timestamp": "2025-12-16T03:38:12.239Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 8000,
+              "input_tokens": 35,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030524999999999997
+            },
+            {
+              "id": "resp_0218e5424882f82c006940d4244720819899a7fff6da7c126f",
+              "timestamp": "2025-12-16T03:38:21.055Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 8816,
+              "input_tokens": 34,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0003051
+            },
+            {
+              "id": "resp_0f42875dc74b822e006940d42d2dc881979a10aea981ae1261",
+              "timestamp": "2025-12-16T03:38:32.340Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11284,
+              "input_tokens": 31,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030464999999999995
+            },
+            {
+              "id": "resp_08956fa016187bb6006940d43864288194a9ab3a5ede9bb242",
+              "timestamp": "2025-12-16T03:38:39.720Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 7380,
+              "input_tokens": 35,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030524999999999997
+            },
+            {
+              "id": "resp_0180840a6f2edec5006940d43fc1448199ba112a54a9dbeecd",
+              "timestamp": "2025-12-16T03:38:51.173Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11453,
+              "input_tokens": 27,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030405
+            },
+            {
+              "id": "resp_05228b39e9ead700006940d44b38d4819bb6acb2456111279c",
+              "timestamp": "2025-12-16T03:39:00.415Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 9242,
+              "input_tokens": 30,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0003045
+            }
+          ],
+          "summary": {
+            "total_requests": 8,
+            "total_tokens": 4262,
+            "total_cost": 0.0024393,
+            "quota_used": 4.262,
+            "quota_limit": 100000,
+            "avg_cost_per_request": 0.0003049125,
+            "peak_requests_per_minute": 8
+          }
+        },
+        {
+          "tenant_id": "freetier-user",
+          "tenant_name": "FreeTier User",
+          "tier": "free",
+          "users": [
+            {
+              "user_id": "FreeTier User-user-1",
+              "request_count": 3,
+              "total_tokens": 1599,
+              "total_cost": 0.0009148499999999999
+            },
+            {
+              "user_id": "FreeTier User-user-2",
+              "request_count": 2,
+              "total_tokens": 1071,
+              "total_cost": 0.0006106499999999999
+            }
+          ],
+          "events": [
+            {
+              "id": "resp_09b392d985ea3844006940d454765c819388782ffbba75c026",
+              "timestamp": "2025-12-16T03:39:09.981Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 9565,
+              "input_tokens": 33,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030494999999999996
+            },
+            {
+              "id": "resp_03472a672b5b9850006940d45e052c819995e807ff8f355db6",
+              "timestamp": "2025-12-16T03:39:19.803Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 9822,
+              "input_tokens": 37,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030555
+            },
+            {
+              "id": "resp_09b592c7d7588c87006940d467db488194a7b68fb5b758fde7",
+              "timestamp": "2025-12-16T03:39:34.064Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 14261,
+              "input_tokens": 35,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030524999999999997
+            },
+            {
+              "id": "resp_096a2d951c086541006940d47619588199a998a9d6c6c66dbb",
+              "timestamp": "2025-12-16T03:39:44.461Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 10397,
+              "input_tokens": 34,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0003051
+            },
+            {
+              "id": "resp_03eb1ac5d82280e4006940d4807e3481988f29a421d37d448e",
+              "timestamp": "2025-12-16T03:39:50.319Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 5858,
+              "input_tokens": 31,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030464999999999995
+            }
+          ],
+          "summary": {
+            "total_requests": 5,
+            "total_tokens": 2670,
+            "total_cost": 0.0015255,
+            "quota_used": 26.700000000000003,
+            "quota_limit": 10000,
+            "avg_cost_per_request": 0.0003051,
+            "peak_requests_per_minute": 5
+          }
+        },
+        {
+          "tenant_id": "hobbyist-dev",
+          "tenant_name": "Hobbyist Dev",
+          "tier": "free",
+          "users": [
+            {
+              "user_id": "Hobbyist Dev-user-1",
+              "request_count": 2,
+              "total_tokens": 1068,
+              "total_cost": 0.0006102
+            },
+            {
+              "user_id": "Hobbyist Dev-user-2",
+              "request_count": 2,
+              "total_tokens": 1071,
+              "total_cost": 0.0006106499999999999
+            }
+          ],
+          "events": [
+            {
+              "id": "resp_0c2e12aca024af39006940d4865c9c81989c814f8ebca0417a",
+              "timestamp": "2025-12-16T03:39:59.664Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 9345,
+              "input_tokens": 33,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030494999999999996
+            },
+            {
+              "id": "resp_00312efa716cd7cc006940d48fb6008194a8b4f93f81c2b2a1",
+              "timestamp": "2025-12-16T03:40:11.326Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 11662,
+              "input_tokens": 37,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030555
+            },
+            {
+              "id": "resp_0d5a21e2d86486c7006940d49b5dd4819aa3c9d0f95c16fd4f",
+              "timestamp": "2025-12-16T03:40:19.511Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 8185,
+              "input_tokens": 35,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030524999999999997
+            },
+            {
+              "id": "resp_08186fc9a1258354006940d4a38f188194983346ad451ce037",
+              "timestamp": "2025-12-16T03:40:28.426Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 8915,
+              "input_tokens": 34,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0003051
+            }
+          ],
+          "summary": {
+            "total_requests": 4,
+            "total_tokens": 2139,
+            "total_cost": 0.0012208499999999999,
+            "quota_used": 21.39,
+            "quota_limit": 10000,
+            "avg_cost_per_request": 0.00030521249999999997,
+            "peak_requests_per_minute": 4
+          }
+        },
+        {
+          "tenant_id": "studentproject",
+          "tenant_name": "StudentProject",
+          "tier": "free",
+          "users": [
+            {
+              "user_id": "StudentProject-user-1",
+              "request_count": 2,
+              "total_tokens": 1068,
+              "total_cost": 0.0006102
+            },
+            {
+              "user_id": "StudentProject-user-2",
+              "request_count": 1,
+              "total_tokens": 537,
+              "total_cost": 0.00030555
+            }
+          ],
+          "events": [
+            {
+              "id": "resp_0478745e477b9f5f006940d4ac7a708198a17c6b23002cfeb4",
+              "timestamp": "2025-12-16T03:40:34.177Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 5751,
+              "input_tokens": 33,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030494999999999996
+            },
+            {
+              "id": "resp_07661abec594afb9006940d4b239c481959c30cfa94aa28411",
+              "timestamp": "2025-12-16T03:40:43.555Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 9378,
+              "input_tokens": 37,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030555
+            },
+            {
+              "id": "resp_05572e89eaf1192c006940d4bb9c988194a712d0cbe14dff44",
+              "timestamp": "2025-12-16T03:40:51.745Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 8190,
+              "input_tokens": 35,
+              "output_tokens": 500,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00030524999999999997
+            }
+          ],
+          "summary": {
+            "total_requests": 3,
+            "total_tokens": 1605,
+            "total_cost": 0.0009157499999999999,
+            "quota_used": 16.05,
+            "quota_limit": 10000,
+            "avg_cost_per_request": 0.00030524999999999997,
+            "peak_requests_per_minute": 3
+          }
+        }
+      ],
+      "summary": {
+        "total_tenants": 9,
+        "total_requests": 95,
+        "total_tokens": 50604,
+        "total_cost": 0.028965599999999998,
+        "top_tenant_by_usage": "Acme Corp",
+        "top_tenant_by_cost": "Acme Corp",
+        "tier_distribution": {
+          "enterprise": 3,
+          "pro": 3,
+          "free": 3
+        }
+      }
+    },
+    "cascaded_agents": [
+      {
+        "type": "cascaded_agents",
+        "task_id": "task-1765856451746-bqzph7",
+        "task_description": "Research and provide a comprehensive analysis of best practices for implementing a multi-tier caching layer including Redis, Memcached, and CDN strategies with failover mechanisms",
+        "started_at": "2025-12-16T03:40:51.746Z",
+        "ended_at": "2025-12-16T03:41:09.436Z",
+        "root_agent": {
+          "agent_id": "orchestrator",
+          "agent_name": "Orchestrator",
+          "agent_type": "orchestrator",
+          "depth": 0,
+          "started_at": "2025-12-16T03:40:51.746Z",
+          "ended_at": "2025-12-16T03:41:09.436Z",
+          "model": "gpt-4o-mini",
+          "events": [
+            {
+              "id": "resp_09acf42af9c3d3b6006940d4c3ccbc81938854e1d8870b8308",
+              "timestamp": "2025-12-16T03:40:53.389Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 1643,
+              "input_tokens": 70,
+              "output_tokens": 64,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.000048899999999999996
+            }
+          ],
+          "tool_calls": [
+            {
+              "tool_name": "search_knowledge_base",
+              "tool_id": "call_IIV6ZC9ecXfBZGyLq6mP1svj",
+              "input": {
+                "query": "best practices multi-tier caching Redis Memcached CDN failover mechanisms"
+              },
+              "output": {
+                "result": "Simulated tool result for search_knowledge_base"
+              },
+              "duration_ms": 50,
+              "success": true
+            },
+            {
+              "tool_name": "analyze_data",
+              "tool_id": "call_tTLRy09gbaCK6BerUxYM0pOJ",
+              "input": {
+                "data_type": "best practices for caching strategies"
+              },
+              "output": {
+                "result": "Simulated tool result for analyze_data"
+              },
+              "duration_ms": 50,
+              "success": true
+            }
+          ],
+          "subagents": [
+            {
+              "agent_id": "worker-1",
+              "agent_name": "Worker-1",
+              "agent_type": "worker",
+              "parent_agent_id": "orchestrator",
+              "depth": 1,
+              "started_at": "2025-12-16T03:40:53.389Z",
+              "ended_at": "2025-12-16T03:40:56.298Z",
+              "model": "gpt-4o-mini",
+              "events": [
+                {
+                  "id": "resp_0a66dc264adaf35c006940d4c56e6c819a98780b88a5eb61e8",
+                  "timestamp": "2025-12-16T03:40:56.298Z",
+                  "model": "gpt-4o-mini",
+                  "latency_ms": 2909,
+                  "input_tokens": 75,
+                  "output_tokens": 72,
+                  "cached_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "cost": 0.000054449999999999995
+                }
+              ],
+              "tool_calls": [
+                {
+                  "tool_name": "search_knowledge_base",
+                  "tool_id": "call_wTPaiF8RtCXNEIJSTuH7a2J4",
+                  "input": {
+                    "query": "best practices multi-tier caching layer Redis Memcached CDN failover mechanisms"
+                  },
+                  "output": {
+                    "result": "Simulated result"
+                  },
+                  "duration_ms": 30,
+                  "success": true
+                },
+                {
+                  "tool_name": "search_knowledge_base",
+                  "tool_id": "call_Pr71aR35HRqMOppH7f85UuM3",
+                  "input": {
+                    "query": "common pitfalls multi-tier caching layer Redis Memcached CDN failover"
+                  },
+                  "output": {
+                    "result": "Simulated result"
+                  },
+                  "duration_ms": 30,
+                  "success": true
+                }
+              ],
+              "subagents": [],
+              "summary": {
+                "total_llm_calls": 1,
+                "total_tool_calls": 2,
+                "total_tokens": 147,
+                "total_cost": 0.000054449999999999995,
+                "total_duration_ms": 2909,
+                "success": true
+              }
+            },
+            {
+              "agent_id": "worker-2",
+              "agent_name": "Worker-2",
+              "agent_type": "worker",
+              "parent_agent_id": "orchestrator",
+              "depth": 1,
+              "started_at": "2025-12-16T03:40:56.298Z",
+              "ended_at": "2025-12-16T03:40:58.707Z",
+              "model": "gpt-4o-mini",
+              "events": [
+                {
+                  "id": "resp_013df4b063c514ec006940d4c857ec819aae48e745d1f6bd03",
+                  "timestamp": "2025-12-16T03:40:58.707Z",
+                  "model": "gpt-4o-mini",
+                  "latency_ms": 2409,
+                  "input_tokens": 142,
+                  "output_tokens": 23,
+                  "cached_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "cost": 0.0000351
+                }
+              ],
+              "tool_calls": [
+                {
+                  "tool_name": "analyze_data",
+                  "tool_id": "call_UslnJPNWXW8LGEeGa5VL1ik7",
+                  "input": {
+                    "data_type": "multi-tier caching layer best practices analysis"
+                  },
+                  "output": {
+                    "result": "Simulated result"
+                  },
+                  "duration_ms": 30,
+                  "success": true
+                }
+              ],
+              "subagents": [],
+              "summary": {
+                "total_llm_calls": 1,
+                "total_tool_calls": 1,
+                "total_tokens": 165,
+                "total_cost": 0.0000351,
+                "total_duration_ms": 2409,
+                "success": true
+              }
+            },
+            {
+              "agent_id": "worker-3",
+              "agent_name": "Worker-3",
+              "agent_type": "worker",
+              "parent_agent_id": "orchestrator",
+              "depth": 1,
+              "started_at": "2025-12-16T03:40:58.707Z",
+              "ended_at": "2025-12-16T03:41:09.436Z",
+              "model": "gpt-4o-mini",
+              "events": [
+                {
+                  "id": "resp_09ead51c70f48e8e006940d4cac5108195b81704e17a52645a",
+                  "timestamp": "2025-12-16T03:41:09.436Z",
+                  "model": "gpt-4o-mini",
+                  "latency_ms": 10729,
+                  "input_tokens": 145,
+                  "output_tokens": 500,
+                  "cached_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "cost": 0.00032175
+                }
+              ],
+              "tool_calls": [],
+              "subagents": [],
+              "summary": {
+                "total_llm_calls": 1,
+                "total_tool_calls": 0,
+                "total_tokens": 645,
+                "total_cost": 0.00032175,
+                "total_duration_ms": 10729,
+                "success": true
+              }
+            }
+          ],
+          "summary": {
+            "total_llm_calls": 1,
+            "total_tool_calls": 2,
+            "total_tokens": 134,
+            "total_cost": 0.000048899999999999996,
+            "total_duration_ms": 17690,
+            "success": true
+          }
+        },
+        "summary": {
+          "total_agents": 4,
+          "max_depth": 1,
+          "total_llm_calls": 4,
+          "total_tool_calls": 5,
+          "total_tokens": 1091,
+          "total_cost": 0.00046019999999999996,
+          "total_duration_ms": 17690,
+          "parallelism_factor": 1,
+          "cost_by_agent_type": {
+            "orchestrator": 0.000048899999999999996,
+            "worker": 0.00041129999999999997
+          },
+          "tokens_by_depth": {
+            "0": 134,
+            "1": 957
+          },
+          "tool_usage": {
+            "search_knowledge_base": {
+              "count": 3,
+              "avg_duration_ms": 36.666666666666664,
+              "success_rate": 100
+            },
+            "analyze_data": {
+              "count": 2,
+              "avg_duration_ms": 40,
+              "success_rate": 100
+            }
+          }
+        }
+      },
+      {
+        "type": "cascaded_agents",
+        "task_id": "task-1765856469437-xz3uro",
+        "task_description": "Analyze the trade-offs between SQL and NoSQL databases for a high-traffic e-commerce platform handling millions of daily transactions with complex querying needs",
+        "started_at": "2025-12-16T03:41:09.437Z",
+        "ended_at": "2025-12-16T03:41:45.022Z",
+        "root_agent": {
+          "agent_id": "orchestrator",
+          "agent_name": "Orchestrator",
+          "agent_type": "orchestrator",
+          "depth": 0,
+          "started_at": "2025-12-16T03:41:09.437Z",
+          "ended_at": "2025-12-16T03:41:45.022Z",
+          "model": "gpt-4o-mini",
+          "events": [
+            {
+              "id": "resp_0fe9de3ea040bf40006940d4e1f7148198b0b35113eaab248c",
+              "timestamp": "2025-12-16T03:41:30.684Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 21247,
+              "input_tokens": 0,
+              "output_tokens": 443,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00026579999999999996
+            }
+          ],
+          "tool_calls": [
+            {
+              "tool_name": "search_knowledge_base",
+              "tool_id": "call_shYe4AsV28SVqYl6GrUvj7Qn",
+              "input": {
+                "query": "advantages and disadvantages of SQL databases for high-traffic applications"
+              },
+              "output": {
+                "result": "Simulated tool result for search_knowledge_base"
+              },
+              "duration_ms": 50,
+              "success": true
+            },
+            {
+              "tool_name": "search_knowledge_base",
+              "tool_id": "call_17yuZZtjzWfuOgPWWaVCOzTY",
+              "input": {
+                "query": "advantages and disadvantages of NoSQL databases for high-traffic applications"
+              },
+              "output": {
+                "result": "Simulated tool result for search_knowledge_base"
+              },
+              "duration_ms": 50,
+              "success": true
+            }
+          ],
+          "subagents": [
+            {
+              "agent_id": "worker-1",
+              "agent_name": "Worker-1",
+              "agent_type": "worker",
+              "parent_agent_id": "orchestrator",
+              "depth": 1,
+              "started_at": "2025-12-16T03:41:30.685Z",
+              "ended_at": "2025-12-16T03:41:31.773Z",
+              "model": "gpt-4o-mini",
+              "events": [
+                {
+                  "id": "resp_096e653bc6b22cf4006940d4eabcac8193a695caa7dd1630e7",
+                  "timestamp": "2025-12-16T03:41:31.773Z",
+                  "model": "gpt-4o-mini",
+                  "latency_ms": 1088,
+                  "input_tokens": 149,
+                  "output_tokens": 27,
+                  "cached_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "cost": 0.000038549999999999995
+                }
+              ],
+              "tool_calls": [
+                {
+                  "tool_name": "search_knowledge_base",
+                  "tool_id": "call_AqzMmg7Ipgt9tNfTQUokQqtc",
+                  "input": {
+                    "query": "best practices SQL NoSQL databases e-commerce platform high traffic"
+                  },
+                  "output": {
+                    "result": "Simulated result"
+                  },
+                  "duration_ms": 30,
+                  "success": true
+                }
+              ],
+              "subagents": [],
+              "summary": {
+                "total_llm_calls": 1,
+                "total_tool_calls": 1,
+                "total_tokens": 176,
+                "total_cost": 0.000038549999999999995,
+                "total_duration_ms": 1088,
+                "success": true
+              }
+            },
+            {
+              "agent_id": "worker-2",
+              "agent_name": "Worker-2",
+              "agent_type": "worker",
+              "parent_agent_id": "orchestrator",
+              "depth": 1,
+              "started_at": "2025-12-16T03:41:31.773Z",
+              "ended_at": "2025-12-16T03:41:32.821Z",
+              "model": "gpt-4o-mini",
+              "events": [
+                {
+                  "id": "resp_07b59ef560e3eeaa006940d4ebd30c8199ae1545895dd062fe",
+                  "timestamp": "2025-12-16T03:41:32.821Z",
+                  "model": "gpt-4o-mini",
+                  "latency_ms": 1048,
+                  "input_tokens": 140,
+                  "output_tokens": 28,
+                  "cached_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "cost": 0.0000378
+                }
+              ],
+              "tool_calls": [
+                {
+                  "tool_name": "analyze_data",
+                  "tool_id": "call_IysUTX7AP8p5zlMrYRdFJXAT",
+                  "input": {
+                    "data_type": "SQL vs NoSQL databases trade-offs analysis for e-commerce platforms"
+                  },
+                  "output": {
+                    "result": "Simulated result"
+                  },
+                  "duration_ms": 30,
+                  "success": true
+                }
+              ],
+              "subagents": [],
+              "summary": {
+                "total_llm_calls": 1,
+                "total_tool_calls": 1,
+                "total_tokens": 168,
+                "total_cost": 0.0000378,
+                "total_duration_ms": 1048,
+                "success": true
+              }
+            },
+            {
+              "agent_id": "worker-3",
+              "agent_name": "Worker-3",
+              "agent_type": "worker",
+              "parent_agent_id": "orchestrator",
+              "depth": 1,
+              "started_at": "2025-12-16T03:41:32.821Z",
+              "ended_at": "2025-12-16T03:41:45.022Z",
+              "model": "gpt-4o-mini",
+              "events": [
+                {
+                  "id": "resp_0765c762a9458074006940d4ecde48819bac4de05b6adb493c",
+                  "timestamp": "2025-12-16T03:41:45.022Z",
+                  "model": "gpt-4o-mini",
+                  "latency_ms": 12201,
+                  "input_tokens": 143,
+                  "output_tokens": 500,
+                  "cached_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "cost": 0.00032145
+                }
+              ],
+              "tool_calls": [],
+              "subagents": [],
+              "summary": {
+                "total_llm_calls": 1,
+                "total_tool_calls": 0,
+                "total_tokens": 643,
+                "total_cost": 0.00032145,
+                "total_duration_ms": 12201,
+                "success": true
+              }
+            }
+          ],
+          "summary": {
+            "total_llm_calls": 1,
+            "total_tool_calls": 2,
+            "total_tokens": 443,
+            "total_cost": 0.00026579999999999996,
+            "total_duration_ms": 35585,
+            "success": true
+          }
+        },
+        "summary": {
+          "total_agents": 4,
+          "max_depth": 1,
+          "total_llm_calls": 4,
+          "total_tool_calls": 4,
+          "total_tokens": 1430,
+          "total_cost": 0.0006635999999999999,
+          "total_duration_ms": 35585,
+          "parallelism_factor": 1,
+          "cost_by_agent_type": {
+            "orchestrator": 0.00026579999999999996,
+            "worker": 0.00039779999999999997
+          },
+          "tokens_by_depth": {
+            "0": 443,
+            "1": 987
+          },
+          "tool_usage": {
+            "search_knowledge_base": {
+              "count": 3,
+              "avg_duration_ms": 43.333333333333336,
+              "success_rate": 100
+            },
+            "analyze_data": {
+              "count": 1,
+              "avg_duration_ms": 30,
+              "success_rate": 100
+            }
+          }
+        }
+      },
+      {
+        "type": "cascaded_agents",
+        "task_id": "task-1765856505022-usaoc7",
+        "task_description": "Design a scalable authentication and authorization system for a multi-tenant SaaS platform supporting SSO, MFA, and fine-grained RBAC with audit logging",
+        "started_at": "2025-12-16T03:41:45.022Z",
+        "ended_at": "2025-12-16T03:41:56.481Z",
+        "root_agent": {
+          "agent_id": "orchestrator",
+          "agent_name": "Orchestrator",
+          "agent_type": "orchestrator",
+          "depth": 0,
+          "started_at": "2025-12-16T03:41:45.022Z",
+          "ended_at": "2025-12-16T03:41:56.481Z",
+          "model": "gpt-4o-mini",
+          "events": [
+            {
+              "id": "resp_0e73c8505834963b006940d4f917388193ad10ab65d95cfde4",
+              "timestamp": "2025-12-16T03:41:46.961Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 1939,
+              "input_tokens": 70,
+              "output_tokens": 68,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00005129999999999999
+            }
+          ],
+          "tool_calls": [
+            {
+              "tool_name": "search_knowledge_base",
+              "tool_id": "call_eE2GIS27cET7Xs5ZIMd8qWHf",
+              "input": {
+                "query": "scalable authentication and authorization system for multi-tenant SaaS"
+              },
+              "output": {
+                "result": "Simulated tool result for search_knowledge_base"
+              },
+              "duration_ms": 50,
+              "success": true
+            },
+            {
+              "tool_name": "search_knowledge_base",
+              "tool_id": "call_IWj1AjMoLoUo3dDMIgjOAJqO",
+              "input": {
+                "query": "Single Sign-On (SSO) best practices"
+              },
+              "output": {
+                "result": "Simulated tool result for search_knowledge_base"
+              },
+              "duration_ms": 50,
+              "success": true
+            }
+          ],
+          "subagents": [
+            {
+              "agent_id": "worker-1",
+              "agent_name": "Worker-1",
+              "agent_type": "worker",
+              "parent_agent_id": "orchestrator",
+              "depth": 1,
+              "started_at": "2025-12-16T03:41:46.961Z",
+              "ended_at": "2025-12-16T03:41:48.067Z",
+              "model": "gpt-4o-mini",
+              "events": [
+                {
+                  "id": "resp_0e187d35f09f9391006940d4fb038c8196a84dc142b4a03ea4",
+                  "timestamp": "2025-12-16T03:41:48.067Z",
+                  "model": "gpt-4o-mini",
+                  "latency_ms": 1106,
+                  "input_tokens": 152,
+                  "output_tokens": 35,
+                  "cached_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "cost": 0.0000438
+                }
+              ],
+              "tool_calls": [
+                {
+                  "tool_name": "search_knowledge_base",
+                  "tool_id": "call_WuCem9J1JskmJICWTAZ81DWv",
+                  "input": {
+                    "query": "best practices design scalable authentication authorization system multi-tenant SaaS SSO MFA RBAC audit logging"
+                  },
+                  "output": {
+                    "result": "Simulated result"
+                  },
+                  "duration_ms": 30,
+                  "success": true
+                }
+              ],
+              "subagents": [],
+              "summary": {
+                "total_llm_calls": 1,
+                "total_tool_calls": 1,
+                "total_tokens": 187,
+                "total_cost": 0.0000438,
+                "total_duration_ms": 1106,
+                "success": true
+              }
+            },
+            {
+              "agent_id": "worker-2",
+              "agent_name": "Worker-2",
+              "agent_type": "worker",
+              "parent_agent_id": "orchestrator",
+              "depth": 1,
+              "started_at": "2025-12-16T03:41:48.067Z",
+              "ended_at": "2025-12-16T03:41:48.963Z",
+              "model": "gpt-4o-mini",
+              "events": [
+                {
+                  "id": "resp_03f0677225374ad5006940d4fc1c44819b9805084cdbfdd14b",
+                  "timestamp": "2025-12-16T03:41:48.963Z",
+                  "model": "gpt-4o-mini",
+                  "latency_ms": 896,
+                  "input_tokens": 143,
+                  "output_tokens": 21,
+                  "cached_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "cost": 0.00003405
+                }
+              ],
+              "tool_calls": [
+                {
+                  "tool_name": "analyze_data",
+                  "tool_id": "call_wl1CVrO2eEcv3432XEbee81E",
+                  "input": {
+                    "data_type": "authentication and authorization system design"
+                  },
+                  "output": {
+                    "result": "Simulated result"
+                  },
+                  "duration_ms": 30,
+                  "success": true
+                }
+              ],
+              "subagents": [],
+              "summary": {
+                "total_llm_calls": 1,
+                "total_tool_calls": 1,
+                "total_tokens": 164,
+                "total_cost": 0.00003405,
+                "total_duration_ms": 896,
+                "success": true
+              }
+            },
+            {
+              "agent_id": "worker-3",
+              "agent_name": "Worker-3",
+              "agent_type": "worker",
+              "parent_agent_id": "orchestrator",
+              "depth": 1,
+              "started_at": "2025-12-16T03:41:48.964Z",
+              "ended_at": "2025-12-16T03:41:56.481Z",
+              "model": "gpt-4o-mini",
+              "events": [
+                {
+                  "id": "resp_0d902218b60bc55f006940d4fd0040819bad4820de2177ea07",
+                  "timestamp": "2025-12-16T03:41:56.481Z",
+                  "model": "gpt-4o-mini",
+                  "latency_ms": 7517,
+                  "input_tokens": 146,
+                  "output_tokens": 500,
+                  "cached_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "cost": 0.00032189999999999996
+                }
+              ],
+              "tool_calls": [],
+              "subagents": [],
+              "summary": {
+                "total_llm_calls": 1,
+                "total_tool_calls": 0,
+                "total_tokens": 646,
+                "total_cost": 0.00032189999999999996,
+                "total_duration_ms": 7517,
+                "success": true
+              }
+            }
+          ],
+          "summary": {
+            "total_llm_calls": 1,
+            "total_tool_calls": 2,
+            "total_tokens": 138,
+            "total_cost": 0.00005129999999999999,
+            "total_duration_ms": 11459,
+            "success": true
+          }
+        },
+        "summary": {
+          "total_agents": 4,
+          "max_depth": 1,
+          "total_llm_calls": 4,
+          "total_tool_calls": 4,
+          "total_tokens": 1135,
+          "total_cost": 0.00045104999999999993,
+          "total_duration_ms": 11459,
+          "parallelism_factor": 1,
+          "cost_by_agent_type": {
+            "orchestrator": 0.00005129999999999999,
+            "worker": 0.00039974999999999993
+          },
+          "tokens_by_depth": {
+            "0": 138,
+            "1": 997
+          },
+          "tool_usage": {
+            "search_knowledge_base": {
+              "count": 3,
+              "avg_duration_ms": 43.333333333333336,
+              "success_rate": 100
+            },
+            "analyze_data": {
+              "count": 1,
+              "avg_duration_ms": 30,
+              "success_rate": 100
+            }
+          }
+        }
+      },
+      {
+        "type": "cascaded_agents",
+        "task_id": "task-1765856516481-wehx0u",
+        "task_description": "Evaluate monitoring and observability tools for a microservices architecture with 50+ services, comparing Prometheus/Grafana, Datadog, and New Relic",
+        "started_at": "2025-12-16T03:41:56.481Z",
+        "ended_at": "2025-12-16T03:42:28.986Z",
+        "root_agent": {
+          "agent_id": "orchestrator",
+          "agent_name": "Orchestrator",
+          "agent_type": "orchestrator",
+          "depth": 0,
+          "started_at": "2025-12-16T03:41:56.481Z",
+          "ended_at": "2025-12-16T03:42:28.986Z",
+          "model": "gpt-4o-mini",
+          "events": [
+            {
+              "id": "resp_0b361f793987c11c006940d5048338819bb25338a8c9059ec7",
+              "timestamp": "2025-12-16T03:42:16.348Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 19867,
+              "input_tokens": 0,
+              "output_tokens": 529,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00031739999999999996
+            }
+          ],
+          "tool_calls": [
+            {
+              "tool_name": "search_knowledge_base",
+              "tool_id": "call_rTGYvYeas8W6bHs2UE7YzN3f",
+              "input": {
+                "query": "Prometheus Grafana features performance comparison"
+              },
+              "output": {
+                "result": "Simulated tool result for search_knowledge_base"
+              },
+              "duration_ms": 51,
+              "success": true
+            },
+            {
+              "tool_name": "search_knowledge_base",
+              "tool_id": "call_5kSAEjrohOCB4J5Zv5NZ5OO8",
+              "input": {
+                "query": "Datadog features performance comparison"
+              },
+              "output": {
+                "result": "Simulated tool result for search_knowledge_base"
+              },
+              "duration_ms": 50,
+              "success": true
+            },
+            {
+              "tool_name": "search_knowledge_base",
+              "tool_id": "call_c6QrdQqksAQJ1AnHQLfObdmK",
+              "input": {
+                "query": "New Relic features performance comparison"
+              },
+              "output": {
+                "result": "Simulated tool result for search_knowledge_base"
+              },
+              "duration_ms": 50,
+              "success": true
+            }
+          ],
+          "subagents": [
+            {
+              "agent_id": "worker-1",
+              "agent_name": "Worker-1",
+              "agent_type": "worker",
+              "parent_agent_id": "orchestrator",
+              "depth": 1,
+              "started_at": "2025-12-16T03:42:16.349Z",
+              "ended_at": "2025-12-16T03:42:18.539Z",
+              "model": "gpt-4o-mini",
+              "events": [
+                {
+                  "id": "resp_0d23f8f805f2bb44006940d51864bc819b830992067f5beab6",
+                  "timestamp": "2025-12-16T03:42:18.539Z",
+                  "model": "gpt-4o-mini",
+                  "latency_ms": 2190,
+                  "input_tokens": 51,
+                  "output_tokens": 90,
+                  "cached_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "cost": 0.00006165000000000001
+                }
+              ],
+              "tool_calls": [
+                {
+                  "tool_name": "search_knowledge_base",
+                  "tool_id": "call_yByrmAkFEk31FOQBGNQnQjSP",
+                  "input": {
+                    "query": "best practices for monitoring and observability tools in microservices architecture"
+                  },
+                  "output": {
+                    "result": "Simulated result"
+                  },
+                  "duration_ms": 30,
+                  "success": true
+                },
+                {
+                  "tool_name": "search_knowledge_base",
+                  "tool_id": "call_4A6Zp6ER3am1v8IQ2hEGv9tB",
+                  "input": {
+                    "query": "common pitfalls monitoring microservices"
+                  },
+                  "output": {
+                    "result": "Simulated result"
+                  },
+                  "duration_ms": 30,
+                  "success": true
+                },
+                {
+                  "tool_name": "search_knowledge_base",
+                  "tool_id": "call_9ukp7Bypn0PtEkfoVJ5CNq9s",
+                  "input": {
+                    "query": "recommendations for Prometheus Grafana Datadog New Relic"
+                  },
+                  "output": {
+                    "result": "Simulated result"
+                  },
+                  "duration_ms": 30,
+                  "success": true
+                }
+              ],
+              "subagents": [],
+              "summary": {
+                "total_llm_calls": 1,
+                "total_tool_calls": 3,
+                "total_tokens": 141,
+                "total_cost": 0.00006165000000000001,
+                "total_duration_ms": 2190,
+                "success": true
+              }
+            },
+            {
+              "agent_id": "worker-2",
+              "agent_name": "Worker-2",
+              "agent_type": "worker",
+              "parent_agent_id": "orchestrator",
+              "depth": 1,
+              "started_at": "2025-12-16T03:42:18.539Z",
+              "ended_at": "2025-12-16T03:42:19.984Z",
+              "model": "gpt-4o-mini",
+              "events": [
+                {
+                  "id": "resp_04b7206c0f430d26006940d51a96f8819bb0753e18a1f84b96",
+                  "timestamp": "2025-12-16T03:42:19.984Z",
+                  "model": "gpt-4o-mini",
+                  "latency_ms": 1445,
+                  "input_tokens": 145,
+                  "output_tokens": 23,
+                  "cached_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "cost": 0.00003555
+                }
+              ],
+              "tool_calls": [
+                {
+                  "tool_name": "analyze_data",
+                  "tool_id": "call_kUr75tmzqKo794wDLOtXfVgc",
+                  "input": {
+                    "data_type": "monitoring and observability tools analysis"
+                  },
+                  "output": {
+                    "result": "Simulated result"
+                  },
+                  "duration_ms": 30,
+                  "success": true
+                }
+              ],
+              "subagents": [],
+              "summary": {
+                "total_llm_calls": 1,
+                "total_tool_calls": 1,
+                "total_tokens": 168,
+                "total_cost": 0.00003555,
+                "total_duration_ms": 1445,
+                "success": true
+              }
+            },
+            {
+              "agent_id": "worker-3",
+              "agent_name": "Worker-3",
+              "agent_type": "worker",
+              "parent_agent_id": "orchestrator",
+              "depth": 1,
+              "started_at": "2025-12-16T03:42:19.984Z",
+              "ended_at": "2025-12-16T03:42:28.986Z",
+              "model": "gpt-4o-mini",
+              "events": [
+                {
+                  "id": "resp_0d3ee5d8be841530006940d51c078c8194acd47b0efb0b6536",
+                  "timestamp": "2025-12-16T03:42:28.986Z",
+                  "model": "gpt-4o-mini",
+                  "latency_ms": 9002,
+                  "input_tokens": 148,
+                  "output_tokens": 500,
+                  "cached_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "cost": 0.00032219999999999997
+                }
+              ],
+              "tool_calls": [],
+              "subagents": [],
+              "summary": {
+                "total_llm_calls": 1,
+                "total_tool_calls": 0,
+                "total_tokens": 648,
+                "total_cost": 0.00032219999999999997,
+                "total_duration_ms": 9002,
+                "success": true
+              }
+            }
+          ],
+          "summary": {
+            "total_llm_calls": 1,
+            "total_tool_calls": 3,
+            "total_tokens": 529,
+            "total_cost": 0.00031739999999999996,
+            "total_duration_ms": 32505,
+            "success": true
+          }
+        },
+        "summary": {
+          "total_agents": 4,
+          "max_depth": 1,
+          "total_llm_calls": 4,
+          "total_tool_calls": 7,
+          "total_tokens": 1486,
+          "total_cost": 0.0007367999999999999,
+          "total_duration_ms": 32505,
+          "parallelism_factor": 1,
+          "cost_by_agent_type": {
+            "orchestrator": 0.00031739999999999996,
+            "worker": 0.0004194
+          },
+          "tokens_by_depth": {
+            "0": 529,
+            "1": 957
+          },
+          "tool_usage": {
+            "search_knowledge_base": {
+              "count": 6,
+              "avg_duration_ms": 40.166666666666664,
+              "success_rate": 100
+            },
+            "analyze_data": {
+              "count": 1,
+              "avg_duration_ms": 30,
+              "success_rate": 100
+            }
+          }
+        }
+      },
+      {
+        "type": "cascaded_agents",
+        "task_id": "task-1765856548986-0dn0zh",
+        "task_description": "Create a comprehensive disaster recovery and business continuity plan for a cloud-native application spanning multiple AWS regions",
+        "started_at": "2025-12-16T03:42:28.986Z",
+        "ended_at": "2025-12-16T03:42:46.306Z",
+        "root_agent": {
+          "agent_id": "orchestrator",
+          "agent_name": "Orchestrator",
+          "agent_type": "orchestrator",
+          "depth": 0,
+          "started_at": "2025-12-16T03:42:28.986Z",
+          "ended_at": "2025-12-16T03:42:46.306Z",
+          "model": "gpt-4o-mini",
+          "events": [
+            {
+              "id": "resp_056f00a7b02cdfb2006940d52505f88198b08b4710d31094f9",
+              "timestamp": "2025-12-16T03:42:30.203Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 1217,
+              "input_tokens": 129,
+              "output_tokens": 23,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00003315
+            }
+          ],
+          "tool_calls": [
+            {
+              "tool_name": "search_knowledge_base",
+              "tool_id": "call_0gV7w6P4tPKKZRYmgQsykU48",
+              "input": {
+                "query": "disaster recovery business continuity plan AWS"
+              },
+              "output": {
+                "result": "Simulated tool result for search_knowledge_base"
+              },
+              "duration_ms": 50,
+              "success": true
+            }
+          ],
+          "subagents": [
+            {
+              "agent_id": "worker-1",
+              "agent_name": "Worker-1",
+              "agent_type": "worker",
+              "parent_agent_id": "orchestrator",
+              "depth": 1,
+              "started_at": "2025-12-16T03:42:30.203Z",
+              "ended_at": "2025-12-16T03:42:33.039Z",
+              "model": "gpt-4o-mini",
+              "events": [
+                {
+                  "id": "resp_0ba62e85102735a1006940d52642248190945777785dddaae6",
+                  "timestamp": "2025-12-16T03:42:33.039Z",
+                  "model": "gpt-4o-mini",
+                  "latency_ms": 2836,
+                  "input_tokens": 46,
+                  "output_tokens": 84,
+                  "cached_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "cost": 0.0000573
+                }
+              ],
+              "tool_calls": [
+                {
+                  "tool_name": "search_knowledge_base",
+                  "tool_id": "call_oFYooIXKqcBGHXRPtedyzfMS",
+                  "input": {
+                    "query": "best practices for disaster recovery in cloud-native applications AWS"
+                  },
+                  "output": {
+                    "result": "Simulated result"
+                  },
+                  "duration_ms": 30,
+                  "success": true
+                },
+                {
+                  "tool_name": "search_knowledge_base",
+                  "tool_id": "call_wZeY94XWOKLV2JMTbuXZiMV4",
+                  "input": {
+                    "query": "common pitfalls in disaster recovery planning AWS"
+                  },
+                  "output": {
+                    "result": "Simulated result"
+                  },
+                  "duration_ms": 30,
+                  "success": true
+                },
+                {
+                  "tool_name": "search_knowledge_base",
+                  "tool_id": "call_8PxrDzSHUeHgjBsaz3hglaG2",
+                  "input": {
+                    "query": "recommended approaches for business continuity AWS"
+                  },
+                  "output": {
+                    "result": "Simulated result"
+                  },
+                  "duration_ms": 30,
+                  "success": true
+                }
+              ],
+              "subagents": [],
+              "summary": {
+                "total_llm_calls": 1,
+                "total_tool_calls": 3,
+                "total_tokens": 130,
+                "total_cost": 0.0000573,
+                "total_duration_ms": 2836,
+                "success": true
+              }
+            },
+            {
+              "agent_id": "worker-2",
+              "agent_name": "Worker-2",
+              "agent_type": "worker",
+              "parent_agent_id": "orchestrator",
+              "depth": 1,
+              "started_at": "2025-12-16T03:42:33.039Z",
+              "ended_at": "2025-12-16T03:42:34.071Z",
+              "model": "gpt-4o-mini",
+              "events": [
+                {
+                  "id": "resp_0babd8834ad5229c006940d52913ac8199b495b2e6ae10a3f7",
+                  "timestamp": "2025-12-16T03:42:34.071Z",
+                  "model": "gpt-4o-mini",
+                  "latency_ms": 1032,
+                  "input_tokens": 131,
+                  "output_tokens": 27,
+                  "cached_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "cost": 0.00003585
+                }
+              ],
+              "tool_calls": [
+                {
+                  "tool_name": "analyze_data",
+                  "tool_id": "call_XbWRCBUO66TLTaVarHFLbYRM",
+                  "input": {
+                    "data_type": "disaster recovery and business continuity strategies for cloud-native applications"
+                  },
+                  "output": {
+                    "result": "Simulated result"
+                  },
+                  "duration_ms": 30,
+                  "success": true
+                }
+              ],
+              "subagents": [],
+              "summary": {
+                "total_llm_calls": 1,
+                "total_tool_calls": 1,
+                "total_tokens": 158,
+                "total_cost": 0.00003585,
+                "total_duration_ms": 1032,
+                "success": true
+              }
+            },
+            {
+              "agent_id": "worker-3",
+              "agent_name": "Worker-3",
+              "agent_type": "worker",
+              "parent_agent_id": "orchestrator",
+              "depth": 1,
+              "started_at": "2025-12-16T03:42:34.071Z",
+              "ended_at": "2025-12-16T03:42:46.306Z",
+              "model": "gpt-4o-mini",
+              "events": [
+                {
+                  "id": "resp_04494fceb415e509006940d52a24008197857afdafd7c3339b",
+                  "timestamp": "2025-12-16T03:42:46.306Z",
+                  "model": "gpt-4o-mini",
+                  "latency_ms": 12235,
+                  "input_tokens": 134,
+                  "output_tokens": 500,
+                  "cached_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "cost": 0.0003201
+                }
+              ],
+              "tool_calls": [],
+              "subagents": [],
+              "summary": {
+                "total_llm_calls": 1,
+                "total_tool_calls": 0,
+                "total_tokens": 634,
+                "total_cost": 0.0003201,
+                "total_duration_ms": 12235,
+                "success": true
+              }
+            }
+          ],
+          "summary": {
+            "total_llm_calls": 1,
+            "total_tool_calls": 1,
+            "total_tokens": 152,
+            "total_cost": 0.00003315,
+            "total_duration_ms": 17320,
+            "success": true
+          }
+        },
+        "summary": {
+          "total_agents": 4,
+          "max_depth": 1,
+          "total_llm_calls": 4,
+          "total_tool_calls": 5,
+          "total_tokens": 1074,
+          "total_cost": 0.0004464,
+          "total_duration_ms": 17320,
+          "parallelism_factor": 1,
+          "cost_by_agent_type": {
+            "orchestrator": 0.00003315,
+            "worker": 0.00041325
+          },
+          "tokens_by_depth": {
+            "0": 152,
+            "1": 922
+          },
+          "tool_usage": {
+            "search_knowledge_base": {
+              "count": 4,
+              "avg_duration_ms": 35,
+              "success_rate": 100
+            },
+            "analyze_data": {
+              "count": 1,
+              "avg_duration_ms": 30,
+              "success_rate": 100
+            }
+          }
+        }
+      },
+      {
+        "type": "cascaded_agents",
+        "task_id": "task-1765856566307-ed7v4v",
+        "task_description": "Design a real-time data pipeline architecture for processing and analyzing IoT sensor data at scale with sub-second latency requirements",
+        "started_at": "2025-12-16T03:42:46.307Z",
+        "ended_at": "2025-12-16T03:43:07.764Z",
+        "root_agent": {
+          "agent_id": "orchestrator",
+          "agent_name": "Orchestrator",
+          "agent_type": "orchestrator",
+          "depth": 0,
+          "started_at": "2025-12-16T03:42:46.307Z",
+          "ended_at": "2025-12-16T03:43:07.764Z",
+          "model": "gpt-4o-mini",
+          "events": [
+            {
+              "id": "resp_0784321326c834fb006940d5365ba0819bbd03c1ed5d94037b",
+              "timestamp": "2025-12-16T03:42:47.978Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 1671,
+              "input_tokens": 133,
+              "output_tokens": 25,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.00003495
+            }
+          ],
+          "tool_calls": [
+            {
+              "tool_name": "search_knowledge_base",
+              "tool_id": "call_ddfr2GbYuwZEXUMcFJgpukF2",
+              "input": {
+                "query": "real-time data pipeline architecture IoT sensor data"
+              },
+              "output": {
+                "result": "Simulated tool result for search_knowledge_base"
+              },
+              "duration_ms": 50,
+              "success": true
+            }
+          ],
+          "subagents": [
+            {
+              "agent_id": "worker-1",
+              "agent_name": "Worker-1",
+              "agent_type": "worker",
+              "parent_agent_id": "orchestrator",
+              "depth": 1,
+              "started_at": "2025-12-16T03:42:47.978Z",
+              "ended_at": "2025-12-16T03:42:50.341Z",
+              "model": "gpt-4o-mini",
+              "events": [
+                {
+                  "id": "resp_043a890be610e9d5006940d5380ea88197afe3a9a753e66c7b",
+                  "timestamp": "2025-12-16T03:42:50.341Z",
+                  "model": "gpt-4o-mini",
+                  "latency_ms": 2363,
+                  "input_tokens": 48,
+                  "output_tokens": 87,
+                  "cached_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "cost": 0.0000594
+                }
+              ],
+              "tool_calls": [
+                {
+                  "tool_name": "search_knowledge_base",
+                  "tool_id": "call_DxocXE37kNIwHlBjCEkngKDG",
+                  "input": {
+                    "query": "real-time data pipeline architecture best practices IoT sensor data"
+                  },
+                  "output": {
+                    "result": "Simulated result"
+                  },
+                  "duration_ms": 30,
+                  "success": true
+                },
+                {
+                  "tool_name": "search_knowledge_base",
+                  "tool_id": "call_6pMOR4Z3rsTg3wjHYZEH6BXj",
+                  "input": {
+                    "query": "IoT sensor data processing common pitfalls"
+                  },
+                  "output": {
+                    "result": "Simulated result"
+                  },
+                  "duration_ms": 30,
+                  "success": true
+                },
+                {
+                  "tool_name": "search_knowledge_base",
+                  "tool_id": "call_AO96X8sKyzgXqrs2cmYLrdBz",
+                  "input": {
+                    "query": "real-time data pipeline recommendations for sub-second latency"
+                  },
+                  "output": {
+                    "result": "Simulated result"
+                  },
+                  "duration_ms": 30,
+                  "success": true
+                }
+              ],
+              "subagents": [],
+              "summary": {
+                "total_llm_calls": 1,
+                "total_tool_calls": 3,
+                "total_tokens": 135,
+                "total_cost": 0.0000594,
+                "total_duration_ms": 2363,
+                "success": true
+              }
+            },
+            {
+              "agent_id": "worker-2",
+              "agent_name": "Worker-2",
+              "agent_type": "worker",
+              "parent_agent_id": "orchestrator",
+              "depth": 1,
+              "started_at": "2025-12-16T03:42:50.341Z",
+              "ended_at": "2025-12-16T03:42:59.738Z",
+              "model": "gpt-4o-mini",
+              "events": [
+                {
+                  "id": "resp_0622c93e8dbb7bf0006940d53a672c8199a2a8c01963e796ac",
+                  "timestamp": "2025-12-16T03:42:59.738Z",
+                  "model": "gpt-4o-mini",
+                  "latency_ms": 9397,
+                  "input_tokens": 135,
+                  "output_tokens": 500,
+                  "cached_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "cost": 0.00032024999999999995
+                }
+              ],
+              "tool_calls": [],
+              "subagents": [],
+              "summary": {
+                "total_llm_calls": 1,
+                "total_tool_calls": 0,
+                "total_tokens": 635,
+                "total_cost": 0.00032024999999999995,
+                "total_duration_ms": 9397,
+                "success": true
+              }
+            },
+            {
+              "agent_id": "worker-3",
+              "agent_name": "Worker-3",
+              "agent_type": "worker",
+              "parent_agent_id": "orchestrator",
+              "depth": 1,
+              "started_at": "2025-12-16T03:42:59.738Z",
+              "ended_at": "2025-12-16T03:43:07.764Z",
+              "model": "gpt-4o-mini",
+              "events": [
+                {
+                  "id": "resp_05308e9ac9a8a7d9006940d543cbb08199a5a804db22c31e6f",
+                  "timestamp": "2025-12-16T03:43:07.764Z",
+                  "model": "gpt-4o-mini",
+                  "latency_ms": 8026,
+                  "input_tokens": 138,
+                  "output_tokens": 500,
+                  "cached_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "cost": 0.0003207
+                }
+              ],
+              "tool_calls": [],
+              "subagents": [],
+              "summary": {
+                "total_llm_calls": 1,
+                "total_tool_calls": 0,
+                "total_tokens": 638,
+                "total_cost": 0.0003207,
+                "total_duration_ms": 8026,
+                "success": true
+              }
+            }
+          ],
+          "summary": {
+            "total_llm_calls": 1,
+            "total_tool_calls": 1,
+            "total_tokens": 158,
+            "total_cost": 0.00003495,
+            "total_duration_ms": 21457,
+            "success": true
+          }
+        },
+        "summary": {
+          "total_agents": 4,
+          "max_depth": 1,
+          "total_llm_calls": 4,
+          "total_tool_calls": 4,
+          "total_tokens": 1566,
+          "total_cost": 0.0007352999999999999,
+          "total_duration_ms": 21457,
+          "parallelism_factor": 1,
+          "cost_by_agent_type": {
+            "orchestrator": 0.00003495,
+            "worker": 0.00070035
+          },
+          "tokens_by_depth": {
+            "0": 158,
+            "1": 1408
+          },
+          "tool_usage": {
+            "search_knowledge_base": {
+              "count": 4,
+              "avg_duration_ms": 35,
+              "success_rate": 100
+            }
+          }
+        }
+      },
+      {
+        "type": "cascaded_agents",
+        "task_id": "task-1765856587764-7fzi6p",
+        "task_description": "Develop a security assessment framework for evaluating third-party API integrations including OAuth flows, data handling, and compliance requirements",
+        "started_at": "2025-12-16T03:43:07.764Z",
+        "ended_at": "2025-12-16T03:43:31.340Z",
+        "root_agent": {
+          "agent_id": "orchestrator",
+          "agent_name": "Orchestrator",
+          "agent_type": "orchestrator",
+          "depth": 0,
+          "started_at": "2025-12-16T03:43:07.764Z",
+          "ended_at": "2025-12-16T03:43:31.340Z",
+          "model": "gpt-4o-mini",
+          "events": [
+            {
+              "id": "resp_08be84be8221e9e8006940d54bce28819b9207c6140e5f7c3e",
+              "timestamp": "2025-12-16T03:43:10.280Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 2516,
+              "input_tokens": 44,
+              "output_tokens": 78,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.0000534
+            }
+          ],
+          "tool_calls": [
+            {
+              "tool_name": "search_knowledge_base",
+              "tool_id": "call_EIBh7zNxu6FmPvb0u5yPEJtU",
+              "input": {
+                "query": "security assessment framework for third-party API integrations"
+              },
+              "output": {
+                "result": "Simulated tool result for search_knowledge_base"
+              },
+              "duration_ms": 50,
+              "success": true
+            },
+            {
+              "tool_name": "search_knowledge_base",
+              "tool_id": "call_iYKSBmYjvQUO7xEufzlkf1ak",
+              "input": {
+                "query": "OAuth flows security best practices"
+              },
+              "output": {
+                "result": "Simulated tool result for search_knowledge_base"
+              },
+              "duration_ms": 50,
+              "success": true
+            },
+            {
+              "tool_name": "search_knowledge_base",
+              "tool_id": "call_sBH0EDHtnipzT0YSN5u9XLcP",
+              "input": {
+                "query": "data handling compliance requirements"
+              },
+              "output": {
+                "result": "Simulated tool result for search_knowledge_base"
+              },
+              "duration_ms": 50,
+              "success": true
+            }
+          ],
+          "subagents": [
+            {
+              "agent_id": "worker-1",
+              "agent_name": "Worker-1",
+              "agent_type": "worker",
+              "parent_agent_id": "orchestrator",
+              "depth": 1,
+              "started_at": "2025-12-16T03:43:10.280Z",
+              "ended_at": "2025-12-16T03:43:11.441Z",
+              "model": "gpt-4o-mini",
+              "events": [
+                {
+                  "id": "resp_03a523b19680c2e2006940d54e53cc8190948971fc8b24e752",
+                  "timestamp": "2025-12-16T03:43:11.440Z",
+                  "model": "gpt-4o-mini",
+                  "latency_ms": 1160,
+                  "input_tokens": 143,
+                  "output_tokens": 31,
+                  "cached_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "cost": 0.00004005
+                }
+              ],
+              "tool_calls": [
+                {
+                  "tool_name": "search_knowledge_base",
+                  "tool_id": "call_Fo8Ayt0Q7EPDNuBbUCea64K9",
+                  "input": {
+                    "query": "security assessment framework third-party API integrations OAuth data handling compliance best practices pitfalls recommendations"
+                  },
+                  "output": {
+                    "result": "Simulated result"
+                  },
+                  "duration_ms": 30,
+                  "success": true
+                }
+              ],
+              "subagents": [],
+              "summary": {
+                "total_llm_calls": 1,
+                "total_tool_calls": 1,
+                "total_tokens": 174,
+                "total_cost": 0.00004005,
+                "total_duration_ms": 1161,
+                "success": true
+              }
+            },
+            {
+              "agent_id": "worker-2",
+              "agent_name": "Worker-2",
+              "agent_type": "worker",
+              "parent_agent_id": "orchestrator",
+              "depth": 1,
+              "started_at": "2025-12-16T03:43:11.441Z",
+              "ended_at": "2025-12-16T03:43:20.949Z",
+              "model": "gpt-4o-mini",
+              "events": [
+                {
+                  "id": "resp_0c685c4cef6e913a006940d54f7d4c8193873905f85fec433d",
+                  "timestamp": "2025-12-16T03:43:20.949Z",
+                  "model": "gpt-4o-mini",
+                  "latency_ms": 9508,
+                  "input_tokens": 134,
+                  "output_tokens": 500,
+                  "cached_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "cost": 0.0003201
+                }
+              ],
+              "tool_calls": [],
+              "subagents": [],
+              "summary": {
+                "total_llm_calls": 1,
+                "total_tool_calls": 0,
+                "total_tokens": 634,
+                "total_cost": 0.0003201,
+                "total_duration_ms": 9508,
+                "success": true
+              }
+            },
+            {
+              "agent_id": "worker-3",
+              "agent_name": "Worker-3",
+              "agent_type": "worker",
+              "parent_agent_id": "orchestrator",
+              "depth": 1,
+              "started_at": "2025-12-16T03:43:20.949Z",
+              "ended_at": "2025-12-16T03:43:31.340Z",
+              "model": "gpt-4o-mini",
+              "events": [
+                {
+                  "id": "resp_0d7d30cc068b411a006940d558fbb881998b8140e05cceed51",
+                  "timestamp": "2025-12-16T03:43:31.340Z",
+                  "model": "gpt-4o-mini",
+                  "latency_ms": 10391,
+                  "input_tokens": 137,
+                  "output_tokens": 500,
+                  "cached_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "cost": 0.00032054999999999996
+                }
+              ],
+              "tool_calls": [],
+              "subagents": [],
+              "summary": {
+                "total_llm_calls": 1,
+                "total_tool_calls": 0,
+                "total_tokens": 637,
+                "total_cost": 0.00032054999999999996,
+                "total_duration_ms": 10391,
+                "success": true
+              }
+            }
+          ],
+          "summary": {
+            "total_llm_calls": 1,
+            "total_tool_calls": 3,
+            "total_tokens": 122,
+            "total_cost": 0.0000534,
+            "total_duration_ms": 23576,
+            "success": true
+          }
+        },
+        "summary": {
+          "total_agents": 4,
+          "max_depth": 1,
+          "total_llm_calls": 4,
+          "total_tool_calls": 4,
+          "total_tokens": 1567,
+          "total_cost": 0.0007340999999999999,
+          "total_duration_ms": 23576,
+          "parallelism_factor": 1,
+          "cost_by_agent_type": {
+            "orchestrator": 0.0000534,
+            "worker": 0.0006806999999999999
+          },
+          "tokens_by_depth": {
+            "0": 122,
+            "1": 1445
+          },
+          "tool_usage": {
+            "search_knowledge_base": {
+              "count": 4,
+              "avg_duration_ms": 45,
+              "success_rate": 100
+            }
+          }
+        }
+      },
+      {
+        "type": "cascaded_agents",
+        "task_id": "task-1765856611340-qodnef",
+        "task_description": "Architect a multi-region deployment strategy for a globally distributed application with data sovereignty requirements and low-latency access",
+        "started_at": "2025-12-16T03:43:31.340Z",
+        "ended_at": "2025-12-16T03:43:55.500Z",
+        "root_agent": {
+          "agent_id": "orchestrator",
+          "agent_name": "Orchestrator",
+          "agent_type": "orchestrator",
+          "depth": 0,
+          "started_at": "2025-12-16T03:43:31.340Z",
+          "ended_at": "2025-12-16T03:43:55.500Z",
+          "model": "gpt-4o-mini",
+          "events": [
+            {
+              "id": "resp_0b9f65e23df5a13d006940d56363ec8195a8c87484f04a8387",
+              "timestamp": "2025-12-16T03:43:33.340Z",
+              "model": "gpt-4o-mini",
+              "latency_ms": 2000,
+              "input_tokens": 44,
+              "output_tokens": 84,
+              "cached_tokens": 0,
+              "reasoning_tokens": 0,
+              "cost": 0.000056999999999999996
+            }
+          ],
+          "tool_calls": [
+            {
+              "tool_name": "search_knowledge_base",
+              "tool_id": "call_9aL2cwMyF8h596535YtwNDy2",
+              "input": {
+                "query": "multi-region deployment strategy for globally distributed applications"
+              },
+              "output": {
+                "result": "Simulated tool result for search_knowledge_base"
+              },
+              "duration_ms": 50,
+              "success": true
+            },
+            {
+              "tool_name": "search_knowledge_base",
+              "tool_id": "call_roLmoXIrvc5JYo9gRBJtTmln",
+              "input": {
+                "query": "data sovereignty requirements in cloud deployments"
+              },
+              "output": {
+                "result": "Simulated tool result for search_knowledge_base"
+              },
+              "duration_ms": 50,
+              "success": true
+            },
+            {
+              "tool_name": "search_knowledge_base",
+              "tool_id": "call_Ok9gTSTMPCuPu8EcPuEAZCvT",
+              "input": {
+                "query": "low-latency access in distributed systems"
+              },
+              "output": {
+                "result": "Simulated tool result for search_knowledge_base"
+              },
+              "duration_ms": 50,
+              "success": true
+            }
+          ],
+          "subagents": [
+            {
+              "agent_id": "worker-1",
+              "agent_name": "Worker-1",
+              "agent_type": "worker",
+              "parent_agent_id": "orchestrator",
+              "depth": 1,
+              "started_at": "2025-12-16T03:43:33.340Z",
+              "ended_at": "2025-12-16T03:43:34.587Z",
+              "model": "gpt-4o-mini",
+              "events": [
+                {
+                  "id": "resp_056e3c2093cca3c5006940d565619c81989ecf2ca2e1d7df6e",
+                  "timestamp": "2025-12-16T03:43:34.587Z",
+                  "model": "gpt-4o-mini",
+                  "latency_ms": 1247,
+                  "input_tokens": 143,
+                  "output_tokens": 29,
+                  "cached_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "cost": 0.000038849999999999996
+                }
+              ],
+              "tool_calls": [
+                {
+                  "tool_name": "search_knowledge_base",
+                  "tool_id": "call_EgV5dLkFoUs275pKi5Q87Grc",
+                  "input": {
+                    "query": "multi-region deployment strategy best practices data sovereignty low-latency access"
+                  },
+                  "output": {
+                    "result": "Simulated result"
+                  },
+                  "duration_ms": 30,
+                  "success": true
+                }
+              ],
+              "subagents": [],
+              "summary": {
+                "total_llm_calls": 1,
+                "total_tool_calls": 1,
+                "total_tokens": 172,
+                "total_cost": 0.000038849999999999996,
+                "total_duration_ms": 1247,
+                "success": true
+              }
+            },
+            {
+              "agent_id": "worker-2",
+              "agent_name": "Worker-2",
+              "agent_type": "worker",
+              "parent_agent_id": "orchestrator",
+              "depth": 1,
+              "started_at": "2025-12-16T03:43:34.587Z",
+              "ended_at": "2025-12-16T03:43:43.989Z",
+              "model": "gpt-4o-mini",
+              "events": [
+                {
+                  "id": "resp_03bc86afa7df8b83006940d566a57c8193867e8c5bc89e6175",
+                  "timestamp": "2025-12-16T03:43:43.989Z",
+                  "model": "gpt-4o-mini",
+                  "latency_ms": 9402,
+                  "input_tokens": 134,
+                  "output_tokens": 500,
+                  "cached_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "cost": 0.0003201
+                }
+              ],
+              "tool_calls": [],
+              "subagents": [],
+              "summary": {
+                "total_llm_calls": 1,
+                "total_tool_calls": 0,
+                "total_tokens": 634,
+                "total_cost": 0.0003201,
+                "total_duration_ms": 9402,
+                "success": true
+              }
+            },
+            {
+              "agent_id": "worker-3",
+              "agent_name": "Worker-3",
+              "agent_type": "worker",
+              "parent_agent_id": "orchestrator",
+              "depth": 1,
+              "started_at": "2025-12-16T03:43:43.989Z",
+              "ended_at": "2025-12-16T03:43:55.500Z",
+              "model": "gpt-4o-mini",
+              "events": [
+                {
+                  "id": "resp_054ecb0f9751f9bf006940d570084881998006361b87de1950",
+                  "timestamp": "2025-12-16T03:43:55.500Z",
+                  "model": "gpt-4o-mini",
+                  "latency_ms": 11511,
+                  "input_tokens": 137,
+                  "output_tokens": 500,
+                  "cached_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "cost": 0.00032054999999999996
+                }
+              ],
+              "tool_calls": [],
+              "subagents": [],
+              "summary": {
+                "total_llm_calls": 1,
+                "total_tool_calls": 0,
+                "total_tokens": 637,
+                "total_cost": 0.00032054999999999996,
+                "total_duration_ms": 11511,
+                "success": true
+              }
+            }
+          ],
+          "summary": {
+            "total_llm_calls": 1,
+            "total_tool_calls": 3,
+            "total_tokens": 128,
+            "total_cost": 0.000056999999999999996,
+            "total_duration_ms": 24160,
+            "success": true
+          }
+        },
+        "summary": {
+          "total_agents": 4,
+          "max_depth": 1,
+          "total_llm_calls": 4,
+          "total_tool_calls": 4,
+          "total_tokens": 1571,
+          "total_cost": 0.0007365,
+          "total_duration_ms": 24160,
+          "parallelism_factor": 1,
+          "cost_by_agent_type": {
+            "orchestrator": 0.000056999999999999996,
+            "worker": 0.0006795
+          },
+          "tokens_by_depth": {
+            "0": 128,
+            "1": 1443
+          },
+          "tool_usage": {
+            "search_knowledge_base": {
+              "count": 4,
+              "avg_duration_ms": 45,
+              "success_rate": 100
+            }
+          }
+        }
+      }
+    ]
+  },
+  "recommendations": [
+    {
+      "category": "cost",
+      "severity": "warning",
+      "title": "Low Cache Utilization",
+      "description": "Your cache hit rate is below 10%. Enabling prompt caching for repeated prompts can reduce costs by up to 75%.",
+      "potential_savings": 52.50297874180528,
+      "action": "Enable prompt_cache_key for conversations and repeated system prompts."
+    },
+    {
+      "category": "performance",
+      "severity": "warning",
+      "title": "High P95 Latency",
+      "description": "Your P95 latency is 15344ms. This may impact user experience.",
+      "action": "Consider streaming responses, reducing max_output_tokens, or using faster models for time-sensitive requests."
+    }
+  ]
+}

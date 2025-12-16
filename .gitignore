@@ -7,6 +7,10 @@
 node_modules/
 dist/
 
+# Environment variables
+.env
+.env.local
+
 # Compiled Java class files
 *.class
 
