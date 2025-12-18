@@ -1,3 +1,5 @@
+import { appendFileSync, writeFileSync, existsSync } from "fs";
+import { appendFile } from "fs/promises";
 import type { MetricEvent, MetricEmitter } from "./types.js";
 
 /**
@@ -161,6 +163,105 @@ export function createMemoryEmitter(): MetricEmitter & {
   emitter.events = events;
   emitter.clear = () => {
     events.length = 0;
+  };
+
+  return emitter;
+}
+
+/**
+ * Options for the JSON file emitter
+ */
+export interface JsonFileEmitterOptions {
+  /** File path to write metrics to */
+  filePath: string;
+  /** Format: "jsonl" for JSON Lines (one event per line), "json" for array */
+  format?: "jsonl" | "json";
+  /** Whether to use async writes (default: true for better performance) */
+  async?: boolean;
+  /** Whether to pretty-print JSON (default: false) */
+  pretty?: boolean;
+}
+
+/**
+ * Creates an emitter that writes metrics to a local JSON/JSONL file.
+ *
+ * JSONL format (default) is recommended - one JSON object per line:
+ * - Efficient for appending
+ * - Easy to stream/parse line by line
+ * - Works well with tools like jq
+ *
+ * @example
+ * ```typescript
+ * // JSONL format (recommended)
+ * const emitter = createJsonFileEmitter({
+ *   filePath: "./metrics.jsonl",
+ * });
+ *
+ * // JSON array format
+ * const emitter = createJsonFileEmitter({
+ *   filePath: "./metrics.json",
+ *   format: "json",
+ *   pretty: true,
+ * });
+ *
+ * instrument({ emitMetric: emitter });
+ * ```
+ */
+export function createJsonFileEmitter(
+  options: JsonFileEmitterOptions
+): MetricEmitter & { flush: () => Promise<void> } {
+  const {
+    filePath,
+    format = "jsonl",
+    async: useAsync = true,
+    pretty = false,
+  } = options;
+
+  // For JSON array format, we need to track events and write on flush
+  const pendingEvents: MetricEvent[] = [];
+
+  // Initialize file for JSON array format
+  if (format === "json" && !existsSync(filePath)) {
+    writeFileSync(filePath, "[]", "utf-8");
+  }
+
+  const emitter = async (event: MetricEvent) => {
+    if (format === "jsonl") {
+      const line = JSON.stringify(event) + "\n";
+      if (useAsync) {
+        await appendFile(filePath, line, "utf-8");
+      } else {
+        appendFileSync(filePath, line, "utf-8");
+      }
+    } else {
+      // JSON array format - collect and write on flush
+      pendingEvents.push(event);
+    }
+  };
+
+  emitter.flush = async () => {
+    if (format === "json" && pendingEvents.length > 0) {
+      // Read existing, merge, and write
+      let existing: MetricEvent[] = [];
+      if (existsSync(filePath)) {
+        try {
+          const content = await import("fs/promises").then((fs) =>
+            fs.readFile(filePath, "utf-8")
+          );
+          existing = JSON.parse(content);
+        } catch {
+          existing = [];
+        }
+      }
+      const merged = [...existing, ...pendingEvents];
+      const content = pretty
+        ? JSON.stringify(merged, null, 2)
+        : JSON.stringify(merged);
+      await import("fs/promises").then((fs) =>
+        fs.writeFile(filePath, content, "utf-8")
+      );
+      pendingEvents.length = 0;
+    }
   };
 
   return emitter;

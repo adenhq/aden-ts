@@ -1,6 +1,28 @@
 // Core metering functionality
 export { makeMeteredOpenAI, isMetered } from "./meter.js";
 
+// Global instrumentation (preferred) - auto-detects all LLM SDKs
+export {
+  // Main entry point
+  instrument,
+  uninstrument,
+  isInstrumented,
+  getInstrumentedSDKs,
+  getInstrumentationOptions,
+  updateInstrumentationOptions,
+  // Provider-specific (for advanced use)
+  instrumentOpenAI,
+  uninstrumentOpenAI,
+  isOpenAIInstrumented,
+  instrumentGemini,
+  uninstrumentGemini,
+  isGeminiInstrumented,
+  instrumentAnthropic,
+  uninstrumentAnthropic,
+  isAnthropicInstrumented,
+} from "./instrument.js";
+export type { InstrumentationResult } from "./instrument.js";
+
 // Context tracking for call relationships
 export {
   // Context management
@@ -46,7 +68,22 @@ export {
   createTransformEmitter,
   createNoopEmitter,
   createMemoryEmitter,
+  createJsonFileEmitter,
 } from "./emitters.js";
+export type { JsonFileEmitterOptions } from "./emitters.js";
+
+// HTTP transport
+export {
+  HttpTransport,
+  createHttpTransport,
+  createHttpEmitter,
+} from "./http-transport.js";
+export type {
+  HttpTransportOptions,
+  TransportStats,
+  QueueOverflowHandler,
+  SendErrorHandler,
+} from "./http-transport.js";
 
 // Analytics engine
 export { AnalyticsEngine, createAnalyticsEmitter } from "./analytics.js";
@@ -82,6 +119,7 @@ export type {
   ToolCallMetric,
   MetricEmitter,
   MeterOptions,
+  SDKClasses,
   BudgetConfig,
   BudgetExceededInfo,
   StreamingEventType,

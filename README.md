@@ -1,12 +1,13 @@
-# openai-meter
+# llm-meter
 
-Lightweight metering and observability wrapper for the OpenAI JavaScript SDK. Track usage metrics, billing data, and implement budget guardrails without modifying your existing code.
+Lightweight metering and observability for LLM SDKs (OpenAI, Gemini, Anthropic). Track usage metrics, billing data, and implement budget guardrails without modifying your existing code.
 
 ## Features
 
-- **Zero-config metering** - Wrap your OpenAI client and start collecting metrics
+- **Multi-provider support** - Automatically detects and instruments OpenAI, Gemini, and Anthropic SDKs
+- **Zero-config metering** - Call `instrument()` once and start collecting metrics
 - **Streaming support** - Metrics collected from streaming responses automatically
-- **Usage normalization** - Consistent format across Responses API and Chat Completions API
+- **Usage normalization** - Consistent format across all providers and API shapes
 - **Budget guardrails** - Pre-flight token counting to prevent runaway costs
 - **Call relationship tracking** - Automatic session grouping, agent hierarchies, and call site detection
 - **Flexible emitters** - Console, batched, multi-destination, and custom emitters
@@ -15,26 +16,50 @@ Lightweight metering and observability wrapper for the OpenAI JavaScript SDK. Tr
 ## Installation
 
 ```bash
-npm install openai-meter openai
+npm install llm-meter
+```
+
+Optional peer dependencies (install the ones you use):
+```bash
+npm install openai                  # For OpenAI
+npm install @google/generative-ai   # For Gemini
+npm install @anthropic-ai/sdk       # For Anthropic/Claude
 ```
 
 ## Quick Start
 
 ```typescript
-import OpenAI from "openai";
-import { makeMeteredOpenAI, createConsoleEmitter } from "openai-meter";
+import { instrument, createConsoleEmitter } from "llm-meter";
 
-const client = new OpenAI();
-
-// Wrap with metering
-const metered = makeMeteredOpenAI(client, {
+// Call once at startup - all available LLM clients are now metered
+const result = instrument({
   emitMetric: createConsoleEmitter({ pretty: true }),
 });
 
-// Use normally - metrics are collected automatically
-const response = await metered.responses.create({
-  model: "gpt-4.1",
-  input: "Hello!",
+console.log(result);
+// { openai: true, gemini: true, anthropic: false }
+
+// Use any LLM SDK normally - metrics collected automatically
+import OpenAI from "openai";
+const openai = new OpenAI();
+await openai.chat.completions.create({ model: "gpt-4", messages: [...] });
+
+import { GoogleGenerativeAI } from "@google/generative-ai";
+const gemini = new GoogleGenerativeAI(apiKey);
+const model = gemini.getGenerativeModel({ model: "gemini-pro" });
+await model.generateContent("Hello!");
+```
+
+### Per-Instance Wrapping (Alternative)
+
+If you need different options per client, use `makeMeteredOpenAI`:
+
+```typescript
+import { makeMeteredOpenAI } from "llm-meter";
+
+const client = new OpenAI();
+const metered = makeMeteredOpenAI(client, {
+  emitMetric: myEmitter,
 });
 ```
 
@@ -61,7 +86,7 @@ Every API call emits a `MetricEvent` with:
 Prevent runaway costs with pre-flight token counting:
 
 ```typescript
-import { withBudgetGuardrails } from "openai-meter";
+import { withBudgetGuardrails } from "llm-meter";
 
 const budgeted = withBudgetGuardrails(metered, {
   maxInputTokens: 4000,
@@ -80,7 +105,7 @@ await budgeted.responses.create({
 Send metrics to your backend:
 
 ```typescript
-import { makeMeteredOpenAI, createBatchEmitter } from "openai-meter";
+import { makeMeteredOpenAI, createBatchEmitter } from "llm-meter";
 
 const batchEmitter = createBatchEmitter(
   async (events) => {
@@ -123,10 +148,113 @@ for await (const event of stream) {
 |---------|-------------|
 | `createConsoleEmitter()` | Log to console (dev/debug) |
 | `createBatchEmitter()` | Batch and flush periodically |
+| `createHttpTransport()` | Send to HTTP API endpoint |
 | `createMultiEmitter()` | Send to multiple destinations |
 | `createFilteredEmitter()` | Filter events before emitting |
 | `createMemoryEmitter()` | Collect in memory (testing) |
 | `createNoopEmitter()` | Disable metrics |
+
+## HTTP Transport
+
+Send metrics to a central API endpoint for storage and aggregation. This is the recommended approach for production deployments.
+
+### Basic Usage
+
+```typescript
+import { makeMeteredOpenAI, createHttpTransport } from "llm-meter";
+
+const transport = createHttpTransport({
+  apiUrl: "https://api.example.com/v1/metrics",
+  apiKey: "your-api-key",
+});
+
+const metered = makeMeteredOpenAI(client, {
+  emitMetric: transport.emit,
+});
+
+// On shutdown - flush remaining metrics
+await transport.stop();
+```
+
+### Environment Variable Configuration
+
+```typescript
+// Set environment variables:
+// METER_API_URL=https://api.example.com/v1/metrics
+// METER_API_KEY=your-api-key (optional)
+// METER_BATCH_SIZE=50 (optional)
+// METER_FLUSH_INTERVAL=5000 (optional, in ms)
+
+const transport = createHttpTransport(); // Uses env vars
+```
+
+### Advanced Options
+
+```typescript
+const transport = createHttpTransport({
+  apiUrl: "https://api.example.com/v1/metrics",
+  apiKey: "your-api-key",
+  batchSize: 100,           // Events per batch (default: 50)
+  flushInterval: 10000,     // ms between flushes (default: 5000)
+  timeout: 15000,           // Request timeout in ms (default: 10000)
+  maxRetries: 5,            // Retry attempts (default: 3)
+  maxQueueSize: 50000,      // Max queued events (default: 10000)
+  headers: {                // Additional headers
+    "X-Tenant-ID": "tenant-123",
+  },
+  onQueueOverflow: (dropped) => {
+    console.warn(`Dropped ${dropped} metrics due to queue overflow`);
+  },
+  onSendError: (error, batch, stats) => {
+    console.error(`Failed to send ${batch.length} metrics:`, error);
+    // Optionally save to fallback storage
+  },
+});
+```
+
+### Monitoring Transport Health
+
+```typescript
+// Check transport stats
+const stats = transport.stats;
+console.log(`Sent: ${stats.sent}, Dropped: ${stats.dropped}, Errors: ${stats.errors}`);
+
+// Manual flush
+await transport.flush();
+
+// Flush all remaining events
+await transport.flushAll();
+
+// Graceful shutdown
+await transport.stop();
+```
+
+### API Endpoint Format
+
+The transport sends POST requests with this payload:
+
+```json
+{
+  "metrics": [
+    {
+      "traceId": "uuid",
+      "requestId": "req_xxx",
+      "model": "gpt-4.1",
+      "latency_ms": 1234,
+      "usage": {
+        "input_tokens": 100,
+        "output_tokens": 50,
+        "total_tokens": 150
+      },
+      "sessionId": "session-uuid",
+      "callSequence": 1,
+      "agentStack": ["OrchestratorAgent"],
+      "callSite": { "file": "src/app.ts", "line": 42 }
+    }
+  ],
+  "timestamp": 1702847123456
+}
+```
 
 ## Call Relationship Tracking
 
@@ -147,7 +275,7 @@ Automatically track relationships between LLM calls using AsyncLocalStorage. Rel
 The simplest approach - related calls are automatically grouped:
 
 ```typescript
-import { makeMeteredOpenAI, createConsoleEmitter } from "openai-meter";
+import { makeMeteredOpenAI, createConsoleEmitter } from "llm-meter";
 
 const metered = makeMeteredOpenAI(client, {
   emitMetric: createConsoleEmitter({ pretty: true }),
@@ -167,7 +295,7 @@ await metered.responses.create({ model: "gpt-4.1", input: "Follow up" });
 For request handlers where you want isolated sessions with custom metadata:
 
 ```typescript
-import { enterMeterContext } from "openai-meter";
+import { enterMeterContext } from "llm-meter";
 
 app.post("/chat", async (req, res) => {
   // Create a new session for this request
@@ -192,7 +320,7 @@ app.post("/chat", async (req, res) => {
 Use `withMeterContext` for explicit session boundaries:
 
 ```typescript
-import { withMeterContextAsync } from "openai-meter";
+import { withMeterContextAsync } from "llm-meter";
 
 // All calls inside share a session, isolated from outside
 const result = await withMeterContextAsync(async () => {
@@ -207,7 +335,7 @@ const result = await withMeterContextAsync(async () => {
 Track nested agent hierarchies for multi-agent systems:
 
 ```typescript
-import { withAgent, pushAgent, popAgent } from "openai-meter";
+import { withAgent, pushAgent, popAgent } from "llm-meter";
 
 // Option A: Using withAgent wrapper
 async function researchAgent() {
@@ -266,7 +394,7 @@ Detected patterns: `*Agent`, `*Handler`, `*Service`, `*Controller`, `handle*`, `
 Attach and retrieve metadata from the current context:
 
 ```typescript
-import { setContextMetadata, getContextMetadata, getCurrentContext } from "openai-meter";
+import { setContextMetadata, getContextMetadata, getCurrentContext } from "llm-meter";
 
 // Set metadata
 setContextMetadata("userId", "user-123");
@@ -299,7 +427,7 @@ import {
   enterMeterContext,
   withAgent,
   createBatchEmitter,
-} from "openai-meter";
+} from "llm-meter";
 
 const metered = makeMeteredOpenAI(client, {
   emitMetric: createBatchEmitter(async (events) => {
@@ -341,9 +469,47 @@ app.post("/agent/run", async (req, res) => {
 
 ## API Reference
 
+### `instrument(options)`
+
+**Recommended.** Instrument OpenAI globally. Call once at startup.
+
+```typescript
+import { instrument, createHttpTransport } from "llm-meter";
+
+instrument({
+  emitMetric: createHttpTransport({ apiUrl: process.env.METER_API_URL }).emit,
+});
+
+// All OpenAI clients are now metered
+const client = new OpenAI();
+```
+
+### `uninstrument()`
+
+Remove global instrumentation. Restores original behavior.
+
+```typescript
+import { uninstrument } from "llm-meter";
+
+uninstrument(); // Metrics no longer collected
+```
+
+### `updateInstrumentationOptions(updates)`
+
+Update options at runtime without re-instrumenting.
+
+```typescript
+import { updateInstrumentationOptions } from "llm-meter";
+
+// Change emitter at runtime
+updateInstrumentationOptions({
+  emitMetric: newEmitter,
+});
+```
+
 ### `makeMeteredOpenAI(client, options)`
 
-Wraps an OpenAI client with metering.
+Wraps a single OpenAI client with metering. Use when you need different options per client.
 
 ```typescript
 interface MeterOptions {

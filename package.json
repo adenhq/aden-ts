@@ -1,7 +1,7 @@
 {
-  "name": "openai-meter",
+  "name": "llm-meter",
   "version": "0.1.0",
-  "description": "Lightweight metering and observability wrapper for the OpenAI JavaScript SDK",
+  "description": "Lightweight metering and observability for LLM SDKs (OpenAI, Gemini, Anthropic)",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -26,6 +26,10 @@
   },
   "keywords": [
     "openai",
+    "gemini",
+    "anthropic",
+    "claude",
+    "llm",
     "metering",
     "usage",
     "billing",
@@ -36,10 +40,25 @@
   "author": "",
   "license": "MIT",
   "peerDependencies": {
-    "openai": ">=4.0.0"
+    "openai": ">=4.0.0",
+    "@google/generative-ai": ">=0.1.0",
+    "@anthropic-ai/sdk": ">=0.20.0"
+  },
+  "peerDependenciesMeta": {
+    "openai": {
+      "optional": true
+    },
+    "@google/generative-ai": {
+      "optional": true
+    },
+    "@anthropic-ai/sdk": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
+    "@google/generative-ai": "^0.21.0",
+    "@anthropic-ai/sdk": "^0.27.0",
     "dotenv": "^17.2.3",
     "openai": "^4.70.0",
     "tsup": "^8.0.0",

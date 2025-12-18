@@ -185,6 +185,23 @@ export class RequestCancelledError extends Error {
 /**
  * Options for the metered OpenAI client
  */
+/**
+ * SDK classes that can be passed for instrumentation.
+ * Use this when you have multiple copies of SDK packages in your node_modules
+ * (e.g., when using file: dependencies or monorepos).
+ */
+export interface SDKClasses {
+  /** GoogleGenerativeAI class from @google/generative-ai */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  GoogleGenerativeAI?: any;
+  /** OpenAI class from openai */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  OpenAI?: any;
+  /** Anthropic class from @anthropic-ai/sdk */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Anthropic?: any;
+}
+
 export interface MeterOptions {
   /** Custom metric emitter function */
   emitMetric: MetricEmitter;
@@ -206,6 +223,23 @@ export interface MeterOptions {
    * Default: true
    */
   trackCallRelationships?: boolean;
+  /**
+   * SDK classes to instrument. Pass these when you have multiple copies of
+   * SDK packages in your node_modules (common in monorepos or with file: dependencies).
+   * If not provided, llm-meter will try to import the SDKs from its own node_modules,
+   * which may not be the same instance your application uses.
+   *
+   * @example
+   * ```typescript
+   * import { GoogleGenerativeAI } from "@google/generative-ai";
+   *
+   * instrument({
+   *   emitMetric: myEmitter,
+   *   sdks: { GoogleGenerativeAI },
+   * });
+   * ```
+   */
+  sdks?: SDKClasses;
 }
 
 /**
