@@ -97,6 +97,65 @@ export interface ToolCallMetric {
 export type MetricEmitter = (event: MetricEvent) => void | Promise<void>;
 
 /**
+ * Context passed to the beforeRequest hook
+ */
+export interface BeforeRequestContext {
+  /** The model being used for this request */
+  model: string;
+  /** Whether this is a streaming request */
+  stream: boolean;
+  /** Generated trace ID for this request */
+  traceId: string;
+  /** Timestamp when the request was initiated */
+  timestamp: Date;
+  /** Custom metadata that can be passed through */
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Result from the beforeRequest hook
+ */
+export type BeforeRequestResult =
+  | { action: "proceed" }
+  | { action: "throttle"; delayMs: number }
+  | { action: "cancel"; reason: string };
+
+/**
+ * Hook called before each API request, allowing user-defined rate limiting
+ *
+ * @example
+ * ```ts
+ * beforeRequest: async (params, context) => {
+ *   const remaining = await checkQuota(context.metadata?.tenantId);
+ *   if (remaining <= 0) {
+ *     return { action: 'cancel', reason: 'Quota exceeded' };
+ *   }
+ *   if (remaining < 10) {
+ *     return { action: 'throttle', delayMs: 1000 };
+ *   }
+ *   return { action: 'proceed' };
+ * }
+ * ```
+ */
+export type BeforeRequestHook = (
+  params: Record<string, unknown>,
+  context: BeforeRequestContext
+) => BeforeRequestResult | Promise<BeforeRequestResult>;
+
+/**
+ * Error thrown when a request is cancelled by the beforeRequest hook
+ */
+export class RequestCancelledError extends Error {
+  constructor(
+    public readonly reason: string,
+    public readonly context: BeforeRequestContext
+  ) {
+    super(`Request cancelled: ${reason}`);
+    this.name = "RequestCancelledError";
+  }
+}
+
+/**
  * Options for the metered OpenAI client
  */
 export interface MeterOptions {
@@ -106,6 +165,13 @@ export interface MeterOptions {
   trackToolCalls?: boolean;
   /** Custom trace ID generator (default: crypto.randomUUID) */
   generateTraceId?: () => string;
+  /**
+   * Hook called before each request for user-defined rate limiting.
+   * Can cancel requests, throttle them with a delay, or allow them to proceed.
+   */
+  beforeRequest?: BeforeRequestHook;
+  /** Custom metadata to pass to beforeRequest hook */
+  requestMetadata?: Record<string, unknown>;
 }
 
 /**

@@ -8,7 +8,10 @@ import type {
   ToolCallMetric,
   NormalizedUsage,
   RequestMetadata,
+  BeforeRequestContext,
+  BeforeRequestResult,
 } from "./types.js";
+import { RequestCancelledError } from "./types.js";
 
 /**
  * Extracts request ID from various response object shapes
@@ -101,6 +104,58 @@ function buildRequestMetadata(
 type AnyFunction = (...args: any[]) => any;
 
 /**
+ * Helper to sleep for a given number of milliseconds
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Executes the beforeRequest hook if provided, handling throttle and cancel actions
+ */
+async function executeBeforeRequestHook(
+  params: Record<string, unknown>,
+  context: BeforeRequestContext,
+  meterOptions: MeterOptions
+): Promise<void> {
+  if (!meterOptions.beforeRequest) {
+    return;
+  }
+
+  const result: BeforeRequestResult = await meterOptions.beforeRequest(
+    params,
+    context
+  );
+
+  if (result.action === "cancel") {
+    throw new RequestCancelledError(result.reason, context);
+  }
+
+  if (result.action === "throttle") {
+    await sleep(result.delayMs);
+  }
+
+  // action === "proceed" - continue normally
+}
+
+/**
+ * Builds the beforeRequest context from params and options
+ */
+function buildBeforeRequestContext(
+  params: Record<string, unknown>,
+  traceId: string,
+  meterOptions: MeterOptions
+): BeforeRequestContext {
+  return {
+    model: params.model as string,
+    stream: !!params.stream,
+    traceId,
+    timestamp: new Date(),
+    metadata: meterOptions.requestMetadata,
+  };
+}
+
+/**
  * Wraps a non-streaming API call with metering
  */
 async function meterNonStreamingCall<T>(
@@ -112,6 +167,10 @@ async function meterNonStreamingCall<T>(
   const traceId = meterOptions.generateTraceId?.() ?? randomUUID();
   const t0 = Date.now();
   const reqMeta = buildRequestMetadata(params, traceId);
+
+  // Execute beforeRequest hook (may throttle or cancel)
+  const beforeCtx = buildBeforeRequestContext(params, traceId, meterOptions);
+  await executeBeforeRequestHook(params, beforeCtx, meterOptions);
 
   try {
     const res = await originalFn(params, ...options);
@@ -268,6 +327,10 @@ async function meterStreamingCall<T>(
   const traceId = meterOptions.generateTraceId?.() ?? randomUUID();
   const t0 = Date.now();
   const reqMeta = buildRequestMetadata(params, traceId);
+
+  // Execute beforeRequest hook (may throttle or cancel)
+  const beforeCtx = buildBeforeRequestContext(params, traceId, meterOptions);
+  await executeBeforeRequestHook(params, beforeCtx, meterOptions);
 
   try {
     const stream = await originalFn(params, ...options);

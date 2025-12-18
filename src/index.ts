@@ -61,4 +61,10 @@ export type {
   BudgetExceededInfo,
   StreamingEventType,
   MeteredOpenAI,
+  BeforeRequestContext,
+  BeforeRequestResult,
+  BeforeRequestHook,
 } from "./types.js";
+
+// Error classes
+export { RequestCancelledError } from "./types.js";
