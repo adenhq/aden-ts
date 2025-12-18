@@ -44,6 +44,20 @@ export interface RequestMetadata {
 }
 
 /**
+ * Information about where an LLM call originated in the code
+ */
+export interface CallSite {
+  /** File path where the call originated */
+  file: string;
+  /** Line number */
+  line: number;
+  /** Column number */
+  column: number;
+  /** Function name (if available) */
+  function?: string;
+}
+
+/**
  * Complete metric event emitted after each API call
  */
 export interface MetricEvent extends RequestMetadata {
@@ -63,6 +77,19 @@ export interface MetricEvent extends RequestMetadata {
   tool_calls?: ToolCallMetric[];
   /** Custom metadata attached to the request */
   metadata?: Record<string, string>;
+
+  // Call relationship tracking (auto-detected)
+
+  /** Session ID grouping related calls together */
+  sessionId?: string;
+  /** Parent trace ID for nested/hierarchical calls */
+  parentTraceId?: string;
+  /** Sequence number within the session */
+  callSequence?: number;
+  /** Stack of agent/handler names leading to this call */
+  agentStack?: string[];
+  /** Source code location where this call originated */
+  callSite?: CallSite;
 }
 
 /**
@@ -172,6 +199,13 @@ export interface MeterOptions {
   beforeRequest?: BeforeRequestHook;
   /** Custom metadata to pass to beforeRequest hook */
   requestMetadata?: Record<string, unknown>;
+  /**
+   * Whether to automatically track call relationships using AsyncLocalStorage.
+   * When enabled, related LLM calls are grouped by session, with parent/child
+   * relationships, agent stacks, and call sites automatically detected.
+   * Default: true
+   */
+  trackCallRelationships?: boolean;
 }
 
 /**

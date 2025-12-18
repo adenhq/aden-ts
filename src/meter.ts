@@ -12,6 +12,7 @@ import type {
   BeforeRequestResult,
 } from "./types.js";
 import { RequestCancelledError } from "./types.js";
+import { getCallRelationship, getFullAgentStack } from "./context.js";
 
 /**
  * Extracts request ID from various response object shapes
@@ -100,6 +101,29 @@ function buildRequestMetadata(
   };
 }
 
+/**
+ * Get call relationship data if tracking is enabled
+ */
+function getRelationshipData(
+  traceId: string,
+  meterOptions: MeterOptions
+): Partial<MetricEvent> {
+  if (meterOptions.trackCallRelationships === false) {
+    return {};
+  }
+
+  const relationship = getCallRelationship(traceId);
+  const agentStack = getFullAgentStack();
+
+  return {
+    sessionId: relationship.sessionId,
+    parentTraceId: relationship.parentTraceId,
+    callSequence: relationship.callSequence,
+    agentStack: agentStack.length > 0 ? agentStack : undefined,
+    callSite: relationship.callSite ?? undefined,
+  };
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyFunction = (...args: any[]) => any;
 
@@ -167,6 +191,7 @@ async function meterNonStreamingCall<T>(
   const traceId = meterOptions.generateTraceId?.() ?? randomUUID();
   const t0 = Date.now();
   const reqMeta = buildRequestMetadata(params, traceId);
+  const relationshipData = getRelationshipData(traceId, meterOptions);
 
   // Execute beforeRequest hook (may throttle or cancel)
   const beforeCtx = buildBeforeRequestContext(params, traceId, meterOptions);
@@ -177,6 +202,7 @@ async function meterNonStreamingCall<T>(
 
     const event: MetricEvent = {
       ...reqMeta,
+      ...relationshipData,
       requestId: extractRequestId(res),
       latency_ms: Date.now() - t0,
       usage: normalizeUsage((res as Record<string, unknown>)?.usage),
@@ -191,6 +217,7 @@ async function meterNonStreamingCall<T>(
   } catch (error) {
     const event: MetricEvent = {
       ...reqMeta,
+      ...relationshipData,
       requestId: null,
       latency_ms: Date.now() - t0,
       usage: null,
@@ -208,6 +235,7 @@ async function meterNonStreamingCall<T>(
 function createMeteredStream<T extends AsyncIterable<unknown>>(
   stream: T,
   reqMeta: RequestMetadata,
+  relationshipData: Partial<MetricEvent>,
   t0: number,
   meterOptions: MeterOptions
 ): T {
@@ -260,6 +288,7 @@ function createMeteredStream<T extends AsyncIterable<unknown>>(
       if (result.done) {
         const metricEvent: MetricEvent = {
           ...reqMeta,
+          ...relationshipData,
           requestId,
           latency_ms: Date.now() - t0,
           usage: finalUsage,
@@ -275,6 +304,7 @@ function createMeteredStream<T extends AsyncIterable<unknown>>(
       // Handle early termination
       const metricEvent: MetricEvent = {
         ...reqMeta,
+        ...relationshipData,
         requestId,
         latency_ms: Date.now() - t0,
         usage: finalUsage,
@@ -291,6 +321,7 @@ function createMeteredStream<T extends AsyncIterable<unknown>>(
     async throw(error?: unknown) {
       const metricEvent: MetricEvent = {
         ...reqMeta,
+        ...relationshipData,
         requestId,
         latency_ms: Date.now() - t0,
         usage: null,
@@ -327,6 +358,7 @@ async function meterStreamingCall<T>(
   const traceId = meterOptions.generateTraceId?.() ?? randomUUID();
   const t0 = Date.now();
   const reqMeta = buildRequestMetadata(params, traceId);
+  const relationshipData = getRelationshipData(traceId, meterOptions);
 
   // Execute beforeRequest hook (may throttle or cancel)
   const beforeCtx = buildBeforeRequestContext(params, traceId, meterOptions);
@@ -344,6 +376,7 @@ async function meterStreamingCall<T>(
       return createMeteredStream(
         stream as AsyncIterable<unknown> & T,
         reqMeta,
+        relationshipData,
         t0,
         meterOptions
       );
@@ -354,6 +387,7 @@ async function meterStreamingCall<T>(
   } catch (error) {
     const event: MetricEvent = {
       ...reqMeta,
+      ...relationshipData,
       requestId: null,
       latency_ms: Date.now() - t0,
       usage: null,

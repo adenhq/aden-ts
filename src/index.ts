@@ -1,6 +1,31 @@
 // Core metering functionality
 export { makeMeteredOpenAI, isMetered } from "./meter.js";
 
+// Context tracking for call relationships
+export {
+  // Context management
+  createMeterContext,
+  getCurrentContext,
+  hasContext,
+  withMeterContext,
+  withMeterContextAsync,
+  enterMeterContext,
+  resetGlobalSession,
+  // Agent tracking
+  pushAgent,
+  popAgent,
+  withAgent,
+  // Stack inspection
+  extractCallSite,
+  extractAgentStack,
+  getFullAgentStack,
+  generateStackFingerprint,
+  // Context metadata
+  setContextMetadata,
+  getContextMetadata,
+} from "./context.js";
+export type { MeterContext, CallRelationship } from "./context.js";
+
 // Usage normalization utilities
 export { normalizeUsage, emptyUsage, mergeUsage } from "./normalize.js";
 
@@ -64,6 +89,7 @@ export type {
   BeforeRequestContext,
   BeforeRequestResult,
   BeforeRequestHook,
+  CallSite,
 } from "./types.js";
 
 // Error classes

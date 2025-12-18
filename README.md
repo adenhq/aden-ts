@@ -8,6 +8,7 @@ Lightweight metering and observability wrapper for the OpenAI JavaScript SDK. Tr
 - **Streaming support** - Metrics collected from streaming responses automatically
 - **Usage normalization** - Consistent format across Responses API and Chat Completions API
 - **Budget guardrails** - Pre-flight token counting to prevent runaway costs
+- **Call relationship tracking** - Automatic session grouping, agent hierarchies, and call site detection
 - **Flexible emitters** - Console, batched, multi-destination, and custom emitters
 - **Full TypeScript support** - Complete type definitions included
 
@@ -127,6 +128,217 @@ for await (const event of stream) {
 | `createMemoryEmitter()` | Collect in memory (testing) |
 | `createNoopEmitter()` | Disable metrics |
 
+## Call Relationship Tracking
+
+Automatically track relationships between LLM calls using AsyncLocalStorage. Related calls are grouped by session, with parent/child relationships, agent hierarchies, and source locations detected automatically.
+
+### Additional Metrics Collected
+
+| Field | Description |
+|-------|-------------|
+| `sessionId` | Groups related calls together |
+| `parentTraceId` | Parent call for nested/hierarchical tracking |
+| `callSequence` | Order of calls within a session (1, 2, 3...) |
+| `agentStack` | Names of agents/handlers in the call chain |
+| `callSite` | Source location (file, line, column, function) |
+
+### Usage Pattern 1: Zero-Config (Auto-Session)
+
+The simplest approach - related calls are automatically grouped:
+
+```typescript
+import { makeMeteredOpenAI, createConsoleEmitter } from "openai-meter";
+
+const metered = makeMeteredOpenAI(client, {
+  emitMetric: createConsoleEmitter({ pretty: true }),
+  // trackCallRelationships: true (default)
+});
+
+// These calls automatically share a session
+await metered.responses.create({ model: "gpt-4.1", input: "Hello" });
+// → sessionId: "abc-123", callSequence: 1
+
+await metered.responses.create({ model: "gpt-4.1", input: "Follow up" });
+// → sessionId: "abc-123", callSequence: 2, parentTraceId: <first-call-trace>
+```
+
+### Usage Pattern 2: Explicit Session with Metadata
+
+For request handlers where you want isolated sessions with custom metadata:
+
+```typescript
+import { enterMeterContext } from "openai-meter";
+
+app.post("/chat", async (req, res) => {
+  // Create a new session for this request
+  enterMeterContext({
+    sessionId: req.headers["x-request-id"], // optional custom ID
+    metadata: { userId: req.userId, tenantId: req.tenantId },
+  });
+
+  // All LLM calls in this request share the session
+  const response = await metered.responses.create({
+    model: "gpt-4.1",
+    input: req.body.message,
+  });
+  // → sessionId tied to this request, metadata available
+
+  res.json(response);
+});
+```
+
+### Usage Pattern 3: Scoped Sessions
+
+Use `withMeterContext` for explicit session boundaries:
+
+```typescript
+import { withMeterContextAsync } from "openai-meter";
+
+// All calls inside share a session, isolated from outside
+const result = await withMeterContextAsync(async () => {
+  await metered.responses.create({ ... }); // callSequence: 1
+  await metered.responses.create({ ... }); // callSequence: 2
+  return processResults();
+}, { metadata: { workflow: "summarization" } });
+```
+
+### Usage Pattern 4: Named Agent Tracking
+
+Track nested agent hierarchies for multi-agent systems:
+
+```typescript
+import { withAgent, pushAgent, popAgent } from "openai-meter";
+
+// Option A: Using withAgent wrapper
+async function researchAgent() {
+  await withAgent("ResearchAgent", async () => {
+    await metered.responses.create({ ... });
+    // → agentStack: ["ResearchAgent"]
+
+    await withAgent("WebSearchAgent", async () => {
+      await metered.responses.create({ ... });
+      // → agentStack: ["ResearchAgent", "WebSearchAgent"]
+    });
+  });
+}
+
+// Option B: Manual push/pop for complex flows
+async function orchestratorAgent() {
+  pushAgent("OrchestratorAgent");
+  try {
+    await metered.responses.create({ ... });
+    // → agentStack: ["OrchestratorAgent"]
+
+    pushAgent("SubAgent");
+    await metered.responses.create({ ... });
+    // → agentStack: ["OrchestratorAgent", "SubAgent"]
+    popAgent();
+
+  } finally {
+    popAgent();
+  }
+}
+```
+
+### Usage Pattern 5: Automatic Agent Detection
+
+Agent names are automatically detected from your call stack:
+
+```typescript
+class ResearchAgent {
+  async execute() {
+    // "ResearchAgent" automatically detected from class name
+    await metered.responses.create({ ... });
+    // → agentStack: ["ResearchAgent"] (auto-detected)
+  }
+}
+
+async function handleUserRequest() {
+  // "handleUserRequest" detected as handler
+  await metered.responses.create({ ... });
+}
+```
+
+Detected patterns: `*Agent`, `*Handler`, `*Service`, `*Controller`, `handle*`, `process*`, `run*`, `execute*`
+
+### Usage Pattern 6: Context Metadata
+
+Attach and retrieve metadata from the current context:
+
+```typescript
+import { setContextMetadata, getContextMetadata, getCurrentContext } from "openai-meter";
+
+// Set metadata
+setContextMetadata("userId", "user-123");
+setContextMetadata("experiment", "variant-a");
+
+// Get metadata
+const userId = getContextMetadata("userId");
+
+// Get full context
+const ctx = getCurrentContext();
+console.log(ctx.sessionId, ctx.callSequence, ctx.metadata);
+```
+
+### Usage Pattern 7: Disabling Relationship Tracking
+
+For high-throughput scenarios where you don't need relationship data:
+
+```typescript
+const metered = makeMeteredOpenAI(client, {
+  emitMetric: myEmitter,
+  trackCallRelationships: false, // Disable for performance
+});
+```
+
+### Full Example: Multi-Agent Orchestrator
+
+```typescript
+import {
+  makeMeteredOpenAI,
+  enterMeterContext,
+  withAgent,
+  createBatchEmitter,
+} from "openai-meter";
+
+const metered = makeMeteredOpenAI(client, {
+  emitMetric: createBatchEmitter(async (events) => {
+    // All events have sessionId, agentStack, callSequence, callSite
+    await sendToAnalytics(events);
+  }),
+});
+
+app.post("/agent/run", async (req, res) => {
+  // Start a new tracked session
+  enterMeterContext({
+    metadata: { userId: req.userId, taskId: req.body.taskId },
+  });
+
+  // Orchestrator decides which agents to run
+  await withAgent("OrchestratorAgent", async () => {
+    const plan = await metered.responses.create({
+      model: "gpt-4.1",
+      input: `Plan for: ${req.body.task}`,
+    });
+    // → callSequence: 1, agentStack: ["OrchestratorAgent"]
+
+    // Execute sub-agents based on plan
+    for (const step of plan.steps) {
+      await withAgent(step.agentName, async () => {
+        await metered.responses.create({
+          model: "gpt-4.1",
+          input: step.prompt,
+        });
+        // → callSequence: 2+, agentStack: ["OrchestratorAgent", step.agentName]
+        // → parentTraceId: previous call's traceId
+      });
+    }
+  });
+
+  res.json({ status: "complete" });
+});
+```
+
 ## API Reference
 
 ### `makeMeteredOpenAI(client, options)`
@@ -137,7 +349,10 @@ Wraps an OpenAI client with metering.
 interface MeterOptions {
   emitMetric: (event: MetricEvent) => void | Promise<void>;
   trackToolCalls?: boolean; // default: true
+  trackCallRelationships?: boolean; // default: true
   generateTraceId?: () => string; // default: crypto.randomUUID
+  beforeRequest?: BeforeRequestHook; // pre-request hook for rate limiting
+  requestMetadata?: Record<string, unknown>; // passed to beforeRequest
 }
 ```
 
@@ -170,6 +385,69 @@ Normalize usage from either API shape.
 const normalized = normalizeUsage(response.usage);
 // { input_tokens, output_tokens, cached_tokens, reasoning_tokens, ... }
 ```
+
+### Context Tracking Functions
+
+#### `enterMeterContext(options?)`
+
+Enter a context that persists across awaits (zero-wrapper approach).
+
+```typescript
+enterMeterContext({
+  sessionId?: string,    // optional custom session ID
+  metadata?: Record<string, unknown>,
+});
+```
+
+#### `withMeterContextAsync(fn, options?)`
+
+Run an async function within an isolated session context.
+
+```typescript
+await withMeterContextAsync(async () => {
+  // Calls here share a session
+}, { metadata: { userId: "123" } });
+```
+
+#### `withAgent(name, fn)`
+
+Run a function within a named agent context.
+
+```typescript
+await withAgent("ResearchAgent", async () => {
+  // Calls here have "ResearchAgent" in agentStack
+});
+```
+
+#### `pushAgent(name)` / `popAgent()`
+
+Manually manage the agent stack for complex flows.
+
+#### `getCurrentContext()`
+
+Get the current meter context (creates one if none exists).
+
+```typescript
+interface MeterContext {
+  sessionId: string;
+  callSequence: number;
+  agentStack: string[];
+  parentTraceId?: string;
+  metadata?: Record<string, unknown>;
+}
+```
+
+#### `setContextMetadata(key, value)` / `getContextMetadata(key)`
+
+Get/set metadata on the current context.
+
+#### `extractCallSite()`
+
+Get the current call site (file, line, column, function).
+
+#### `extractAgentStack()`
+
+Get auto-detected agent names from the call stack.
 
 ## Examples
 
