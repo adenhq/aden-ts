@@ -12,9 +12,88 @@ import type {
   MetricEvent,
   MeterOptions,
   NormalizedUsage,
-  RequestMetadata,
   ToolCallMetric,
 } from "./types.js";
+
+/**
+ * Build a flat MetricEvent for OpenAI (OTel-compatible)
+ */
+function buildFlatEvent(
+  spanId: string,
+  params: Record<string, unknown>,
+  stream: boolean,
+  latencyMs: number,
+  usage: NormalizedUsage | null,
+  requestId: string | null,
+  meterOptions: MeterOptions,
+  toolCalls?: ToolCallMetric[],
+  error?: string
+): MetricEvent {
+  // Get relationship data first to get trace_id
+  const relationship = meterOptions.trackCallRelationships !== false
+    ? getCallRelationship(spanId)
+    : null;
+
+  const event: MetricEvent = {
+    trace_id: relationship?.traceId ?? spanId, // Use trace from context, fallback to spanId
+    span_id: spanId,
+    request_id: requestId,
+    provider: "openai",
+    model: params.model as string,
+    stream,
+    timestamp: new Date().toISOString(),
+    latency_ms: latencyMs,
+    input_tokens: usage?.input_tokens ?? 0,
+    output_tokens: usage?.output_tokens ?? 0,
+    total_tokens: usage?.total_tokens ?? 0,
+    cached_tokens: usage?.cached_tokens ?? 0,
+    reasoning_tokens: usage?.reasoning_tokens ?? 0,
+  };
+
+  // Add service tier if present
+  if (params.service_tier) {
+    event.service_tier = params.service_tier as string;
+  }
+
+  // Add error if present
+  if (error) {
+    event.error = error;
+  }
+
+  // Add tool call info
+  if (toolCalls && toolCalls.length > 0) {
+    event.tool_call_count = toolCalls.length;
+    event.tool_names = toolCalls.map(t => t.name ?? t.type).join(", ");
+  }
+
+  // Add relationship data if enabled
+  if (relationship) {
+    const agentStack = getFullAgentStack();
+
+    if (relationship.parentSpanId) {
+      event.parent_span_id = relationship.parentSpanId;
+    }
+    if (relationship.callSequence !== undefined) {
+      event.call_sequence = relationship.callSequence;
+    }
+    if (agentStack.length > 0) {
+      event.agent_stack = agentStack;
+    }
+    if (relationship.callSite) {
+      event.call_site_file = relationship.callSite.file;
+      event.call_site_line = relationship.callSite.line;
+      event.call_site_column = relationship.callSite.column;
+      if (relationship.callSite.function) {
+        event.call_site_function = relationship.callSite.function;
+      }
+    }
+    if (relationship.callStack && relationship.callStack.length > 0) {
+      event.call_stack = relationship.callStack;
+    }
+  }
+
+  return event;
+}
 
 // Track if we've already instrumented
 let isInstrumented = false;
@@ -90,57 +169,16 @@ function extractToolCalls(response: unknown): ToolCallMetric[] {
   return toolCalls;
 }
 
-/**
- * Build request metadata
- */
-function buildRequestMetadata(
-  params: Record<string, unknown>,
-  traceId: string
-): RequestMetadata {
-  return {
-    traceId,
-    model: params.model as string,
-    service_tier: params.service_tier as string | undefined,
-    max_output_tokens: params.max_output_tokens as number | undefined,
-    max_tool_calls: params.max_tool_calls as number | undefined,
-    prompt_cache_key: params.prompt_cache_key as string | undefined,
-    prompt_cache_retention: params.prompt_cache_retention as string | undefined,
-    stream: !!params.stream,
-  };
-}
-
-/**
- * Get relationship data if enabled
- */
-function getRelationshipData(
-  traceId: string,
-  options: MeterOptions
-): Partial<MetricEvent> {
-  if (options.trackCallRelationships === false) {
-    return {};
-  }
-
-  const relationship = getCallRelationship(traceId);
-  const agentStack = getFullAgentStack();
-
-  return {
-    sessionId: relationship.sessionId,
-    parentTraceId: relationship.parentTraceId,
-    callSequence: relationship.callSequence,
-    agentStack: agentStack.length > 0 ? agentStack : undefined,
-    callSite: relationship.callSite ?? undefined,
-  };
-}
 
 /**
  * Create metered stream wrapper
  */
 function createMeteredStream<T extends AsyncIterable<unknown>>(
   stream: T,
-  reqMeta: RequestMetadata,
-  relationshipData: Partial<MetricEvent>,
+  spanId: string,
+  params: Record<string, unknown>,
   t0: number,
-  options: MeterOptions
+  meterOptions: MeterOptions
 ): T {
   const originalIterator = stream[Symbol.asyncIterator]();
   let finalUsage: NormalizedUsage | null = null;
@@ -165,13 +203,13 @@ function createMeteredStream<T extends AsyncIterable<unknown>>(
           const response = (event.response ?? event) as Record<string, unknown>;
           finalUsage = normalizeUsage(response.usage);
 
-          if (options.trackToolCalls !== false) {
+          if (meterOptions.trackToolCalls !== false) {
             toolCalls.push(...extractToolCalls(response));
           }
         }
 
         if (
-          options.trackToolCalls !== false &&
+          meterOptions.trackToolCalls !== false &&
           event.type === "response.function_call_arguments.done"
         ) {
           toolCalls.push({
@@ -182,31 +220,21 @@ function createMeteredStream<T extends AsyncIterable<unknown>>(
       }
 
       if (result.done) {
-        const metricEvent: MetricEvent = {
-          ...reqMeta,
-          ...relationshipData,
-          requestId,
-          latency_ms: Date.now() - t0,
-          usage: finalUsage,
-          tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
-        };
-
-        await options.emitMetric(metricEvent);
+        const metricEvent = buildFlatEvent(
+          spanId, params, true, Date.now() - t0, finalUsage,
+          requestId, meterOptions, toolCalls.length > 0 ? toolCalls : undefined
+        );
+        await meterOptions.emitMetric(metricEvent);
       }
 
       return result;
     },
     async return(value?: unknown) {
-      const metricEvent: MetricEvent = {
-        ...reqMeta,
-        ...relationshipData,
-        requestId,
-        latency_ms: Date.now() - t0,
-        usage: finalUsage,
-        tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
-      };
-
-      await options.emitMetric(metricEvent);
+      const metricEvent = buildFlatEvent(
+        spanId, params, true, Date.now() - t0, finalUsage,
+        requestId, meterOptions, toolCalls.length > 0 ? toolCalls : undefined
+      );
+      await meterOptions.emitMetric(metricEvent);
 
       if (originalIterator.return) {
         return originalIterator.return(value);
@@ -214,16 +242,11 @@ function createMeteredStream<T extends AsyncIterable<unknown>>(
       return { done: true, value: undefined };
     },
     async throw(error?: unknown) {
-      const metricEvent: MetricEvent = {
-        ...reqMeta,
-        ...relationshipData,
-        requestId,
-        latency_ms: Date.now() - t0,
-        usage: null,
-        error: error instanceof Error ? error.message : String(error),
-      };
-
-      await options.emitMetric(metricEvent);
+      const metricEvent = buildFlatEvent(
+        spanId, params, true, Date.now() - t0, null, requestId, meterOptions, undefined,
+        error instanceof Error ? error.message : String(error)
+      );
+      await meterOptions.emitMetric(metricEvent);
 
       if (originalIterator.throw) {
         return originalIterator.throw(error);
@@ -252,11 +275,9 @@ function wrapCreateMethod(
     params: Record<string, unknown>,
     ...rest: unknown[]
   ) {
-    const options = getOptions();
-    const traceId = options.generateTraceId?.() ?? randomUUID();
+    const meterOptions = getOptions();
+    const spanId = meterOptions.generateSpanId?.() ?? randomUUID();
     const t0 = Date.now();
-    const reqMeta = buildRequestMetadata(params, traceId);
-    const relationshipData = getRelationshipData(traceId, options);
 
     try {
       const result = await originalFn.call(this, params, ...rest);
@@ -270,39 +291,30 @@ function wrapCreateMethod(
       ) {
         return createMeteredStream(
           result as AsyncIterable<unknown>,
-          reqMeta,
-          relationshipData,
+          spanId,
+          params,
           t0,
-          options
+          meterOptions
         );
       }
 
       // Non-streaming
-      const event: MetricEvent = {
-        ...reqMeta,
-        ...relationshipData,
-        requestId: extractRequestId(result),
-        latency_ms: Date.now() - t0,
-        usage: normalizeUsage((result as Record<string, unknown>)?.usage),
-        tool_calls:
-          options.trackToolCalls !== false
-            ? extractToolCalls(result)
-            : undefined,
-      };
+      const usage = normalizeUsage((result as Record<string, unknown>)?.usage);
+      const toolCalls = meterOptions.trackToolCalls !== false ? extractToolCalls(result) : undefined;
+      const event = buildFlatEvent(
+        spanId, params, false, Date.now() - t0, usage,
+        extractRequestId(result), meterOptions, toolCalls
+      );
 
-      await options.emitMetric(event);
+      await meterOptions.emitMetric(event);
       return result;
     } catch (error) {
-      const event: MetricEvent = {
-        ...reqMeta,
-        ...relationshipData,
-        requestId: null,
-        latency_ms: Date.now() - t0,
-        usage: null,
-        error: error instanceof Error ? error.message : String(error),
-      };
+      const event = buildFlatEvent(
+        spanId, params, false, Date.now() - t0, null, null, meterOptions, undefined,
+        error instanceof Error ? error.message : String(error)
+      );
 
-      await options.emitMetric(event);
+      await meterOptions.emitMetric(event);
       throw error;
     }
   };

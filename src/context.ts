@@ -6,17 +6,17 @@ import type { CallSite } from "./types.js";
 export type { CallSite } from "./types.js";
 
 /**
- * Context for tracking related LLM calls within a session
+ * Context for tracking related LLM calls within a trace (OTel-compatible)
  */
 export interface MeterContext {
-  /** Unique session ID - groups related calls together */
-  sessionId: string;
-  /** Current call sequence number within session */
+  /** Trace ID grouping related operations (OTel standard) */
+  traceId: string;
+  /** Current call sequence number within trace */
   callSequence: number;
   /** Stack of agent/function names for nested calls */
   agentStack: string[];
-  /** Parent trace ID for hierarchical tracking */
-  parentTraceId?: string;
+  /** Parent span ID for hierarchical tracking (OTel standard) */
+  parentSpanId?: string;
   /** Custom metadata attached to this context */
   metadata?: Record<string, unknown>;
   /** Stack fingerprint for heuristic grouping */
@@ -24,19 +24,21 @@ export interface MeterContext {
 }
 
 /**
- * Extended metric event with call relationship tracking
+ * Extended metric event with call relationship tracking (OTel-compatible)
  */
 export interface CallRelationship {
-  /** Session this call belongs to */
-  sessionId: string;
-  /** Parent trace ID if this is a nested call */
-  parentTraceId?: string;
-  /** Sequence number within the session */
+  /** Trace ID grouping related operations (OTel standard) */
+  traceId: string;
+  /** Parent span ID if this is a nested call (OTel standard) */
+  parentSpanId?: string;
+  /** Sequence number within the trace */
   callSequence: number;
   /** Stack of agent names leading to this call */
   agentStack: string[];
-  /** Where in the code this call originated */
+  /** Where in the code this call originated (immediate caller) */
   callSite?: CallSite;
+  /** Full call stack for detailed tracing */
+  callStack?: string[];
 }
 
 // AsyncLocalStorage for automatic context propagation
@@ -65,7 +67,10 @@ const AGENT_PATTERNS = [
 const SKIP_PATTERNS = [
   /node_modules/,
   /node:internal/,
+  /llm-meter/,
   /openai-meter/,
+  /arp-ingress-exp/,
+  /dist\/index\.(m?js|cjs)/,
   /<anonymous>/,
   /^native /,
 ];
@@ -113,6 +118,37 @@ export function extractCallSite(): CallSite | undefined {
   }
 
   return undefined;
+}
+
+/**
+ * Default max frames to capture in call stack
+ */
+const DEFAULT_MAX_STACK_FRAMES = 10;
+
+/**
+ * Extract multiple call stack frames from the current stack.
+ * Returns an array of formatted strings: "file:line:function" or "file:line"
+ *
+ * @param maxFrames - Maximum number of frames to capture (default: 10)
+ */
+export function extractCallStack(maxFrames: number = DEFAULT_MAX_STACK_FRAMES): string[] {
+  const err = new Error();
+  const stack = err.stack?.split("\n") ?? [];
+  const frames: string[] = [];
+
+  // Skip first line ("Error") and internal frames
+  for (let i = 1; i < stack.length && frames.length < maxFrames; i++) {
+    const site = parseStackLine(stack[i]);
+    if (site) {
+      // Format: "file:line:function" or "file:line" if no function
+      const frame = site.function
+        ? `${site.file}:${site.line}:${site.function}`
+        : `${site.file}:${site.line}`;
+      frames.push(frame);
+    }
+  }
+
+  return frames;
 }
 
 /**
@@ -180,11 +216,11 @@ export function generateStackFingerprint(): string {
  * Create a new meter context
  */
 export function createMeterContext(options?: {
-  sessionId?: string;
+  traceId?: string;
   metadata?: Record<string, unknown>;
 }): MeterContext {
   return {
-    sessionId: options?.sessionId ?? randomUUID(),
+    traceId: options?.traceId ?? randomUUID(),
     callSequence: 0,
     agentStack: [],
     metadata: options?.metadata,
@@ -221,12 +257,12 @@ export function hasContext(): boolean {
 }
 
 /**
- * Run a function within a new meter context
+ * Run a function within a new meter context (trace)
  *
  * @example
  * ```ts
  * await withMeterContext(async () => {
- *   // All LLM calls here share the same session
+ *   // All LLM calls here share the same trace
  *   await client.responses.create({ ... });
  *   await client.responses.create({ ... });
  * }, { metadata: { userId: "123" } });
@@ -235,7 +271,7 @@ export function hasContext(): boolean {
 export function withMeterContext<T>(
   fn: () => T,
   options?: {
-    sessionId?: string;
+    traceId?: string;
     metadata?: Record<string, unknown>;
   }
 ): T {
@@ -244,12 +280,12 @@ export function withMeterContext<T>(
 }
 
 /**
- * Run an async function within a new meter context
+ * Run an async function within a new meter context (trace)
  */
 export async function withMeterContextAsync<T>(
   fn: () => Promise<T>,
   options?: {
-    sessionId?: string;
+    traceId?: string;
     metadata?: Record<string, unknown>;
   }
 ): Promise<T> {
@@ -275,7 +311,7 @@ export async function withMeterContextAsync<T>(
  * ```
  */
 export function enterMeterContext(options?: {
-  sessionId?: string;
+  traceId?: string;
   metadata?: Record<string, unknown>;
 }): MeterContext {
   const ctx = createMeterContext(options);
@@ -329,8 +365,9 @@ export async function withAgent<T>(
  *
  * This is called internally by the meter to attach relationship
  * data to each metric event.
+ * @param spanId - The span ID of the current operation
  */
-export function getCallRelationship(traceId: string): CallRelationship {
+export function getCallRelationship(spanId: string): CallRelationship {
   const ctx = getCurrentContext();
 
   // Increment call sequence
@@ -338,16 +375,17 @@ export function getCallRelationship(traceId: string): CallRelationship {
 
   // Build relationship info
   const relationship: CallRelationship = {
-    sessionId: ctx.sessionId,
+    traceId: ctx.traceId,
     callSequence: ctx.callSequence,
     agentStack: [...ctx.agentStack],
-    parentTraceId: ctx.parentTraceId,
+    parentSpanId: ctx.parentSpanId,
     callSite: extractCallSite(),
+    callStack: extractCallStack(),
   };
 
-  // Update parent trace for next call (if nesting)
+  // Update parent span for next call (if nesting)
   // The current call becomes the parent of subsequent calls
-  ctx.parentTraceId = traceId;
+  ctx.parentSpanId = spanId;
 
   return relationship;
 }

@@ -22,7 +22,8 @@ export function createConsoleEmitter(
 
     const prefix = event.error ? "❌" : "✓";
     const summary = [
-      `${prefix} [${event.traceId.slice(0, 8)}]`,
+      `${prefix} [${event.span_id.slice(0, 8)}]`,
+      event.provider,
       event.model,
       event.stream ? "(stream)" : "",
       `${event.latency_ms}ms`,
@@ -30,27 +31,25 @@ export function createConsoleEmitter(
       .filter(Boolean)
       .join(" ");
 
-    if (pretty && event.usage) {
+    if (pretty) {
       console.log(summary);
       console.log(
-        `  tokens: ${event.usage.input_tokens} in / ${event.usage.output_tokens} out`
+        `  tokens: ${event.input_tokens} in / ${event.output_tokens} out`
       );
-      if (event.usage.cached_tokens > 0) {
-        console.log(`  cached: ${event.usage.cached_tokens}`);
+      if (event.cached_tokens > 0) {
+        console.log(`  cached: ${event.cached_tokens}`);
       }
-      if (event.usage.reasoning_tokens > 0) {
-        console.log(`  reasoning: ${event.usage.reasoning_tokens}`);
+      if (event.reasoning_tokens > 0) {
+        console.log(`  reasoning: ${event.reasoning_tokens}`);
       }
-      if (event.tool_calls?.length) {
-        console.log(
-          `  tools: ${event.tool_calls.map((t) => t.name ?? t.type).join(", ")}`
-        );
+      if (event.tool_call_count && event.tool_call_count > 0) {
+        console.log(`  tools: ${event.tool_call_count} calls (${event.tool_names})`);
       }
       if (event.error) {
         console.log(`  error: ${event.error}`);
       }
     } else {
-      console.log(summary, pretty ? "" : JSON.stringify(event));
+      console.log(summary, JSON.stringify(event));
     }
   };
 }

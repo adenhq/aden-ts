@@ -35,13 +35,13 @@ function fromMetricEvent(event: MetricEvent): UnifiedEvent {
   return {
     model: event.model,
     latency_ms: event.latency_ms,
-    input_tokens: event.usage?.input_tokens ?? 0,
-    output_tokens: event.usage?.output_tokens ?? 0,
-    cached_tokens: event.usage?.cached_tokens ?? 0,
-    reasoning_tokens: event.usage?.reasoning_tokens ?? 0,
+    input_tokens: event.input_tokens,
+    output_tokens: event.output_tokens,
+    cached_tokens: event.cached_tokens,
+    reasoning_tokens: event.reasoning_tokens,
     cost: 0, // Will be calculated
     error: event.error,
-    timestamp: new Date().toISOString(),
+    timestamp: event.timestamp,
   };
 }
 
@@ -191,13 +191,13 @@ export class ReportBuilder {
    * Calculate cost for MetricEvent
    */
   private calculateEventCost(event: MetricEvent): number {
-    if (!event.usage) return 0;
+    if (event.input_tokens === 0 && event.output_tokens === 0) return 0;
     const pricing = this.pricing[event.model] ?? this.pricing["gpt-5-mini"] ?? { input: 1, output: 3, cached: 0.25 };
-    const uncachedInput = event.usage.input_tokens - event.usage.cached_tokens;
+    const uncachedInput = event.input_tokens - event.cached_tokens;
     return (
       (uncachedInput / 1_000_000) * pricing.input +
-      (event.usage.cached_tokens / 1_000_000) * pricing.cached +
-      (event.usage.output_tokens / 1_000_000) * pricing.output
+      (event.cached_tokens / 1_000_000) * pricing.cached +
+      (event.output_tokens / 1_000_000) * pricing.output
     );
   }
 

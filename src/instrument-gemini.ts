@@ -7,12 +7,7 @@
 
 import { randomUUID } from "crypto";
 import { getCallRelationship, getFullAgentStack } from "./context.js";
-import type {
-  MetricEvent,
-  MeterOptions,
-  NormalizedUsage,
-  RequestMetadata,
-} from "./types.js";
+import type { MetricEvent, MeterOptions } from "./types.js";
 
 // Track if we've already instrumented
 let isInstrumented = false;
@@ -29,25 +24,6 @@ let originalGetGenerativeModel: ((...args: unknown[]) => unknown) | null = null;
 let originalStartChat: ((...args: unknown[]) => unknown) | null = null;
 
 /**
- * Normalize Gemini usage to our standard format
- */
-function normalizeGeminiUsage(usageMetadata: unknown): NormalizedUsage | null {
-  if (!usageMetadata || typeof usageMetadata !== "object") return null;
-
-  const usage = usageMetadata as Record<string, unknown>;
-
-  return {
-    input_tokens: (usage.promptTokenCount as number) ?? 0,
-    output_tokens: (usage.candidatesTokenCount as number) ?? 0,
-    total_tokens: (usage.totalTokenCount as number) ?? 0,
-    cached_tokens: (usage.cachedContentTokenCount as number) ?? 0,
-    reasoning_tokens: 0, // Gemini doesn't have this concept yet
-    accepted_prediction_tokens: 0,
-    rejected_prediction_tokens: 0,
-  };
-}
-
-/**
  * Extract model name from Gemini model instance
  */
 function extractModelName(model: unknown): string {
@@ -57,41 +33,78 @@ function extractModelName(model: unknown): string {
 }
 
 /**
- * Build request metadata for Gemini
+ * Build a flat MetricEvent for Gemini (OTel-compatible)
  */
-function buildRequestMetadata(
+function buildFlatEvent(
+  spanId: string,
   model: unknown,
-  traceId: string
-): RequestMetadata {
-  const modelName = extractModelName(model);
-  return {
-    traceId,
-    model: modelName,
-    stream: false,
-  };
-}
+  stream: boolean,
+  latencyMs: number,
+  usageMetadata: unknown,
+  meterOptions: MeterOptions,
+  error?: string
+): MetricEvent {
+  // Get relationship data first to get trace_id
+  const relationship = meterOptions.trackCallRelationships !== false
+    ? getCallRelationship(spanId)
+    : null;
 
-/**
- * Get relationship data if enabled
- */
-function getRelationshipData(
-  traceId: string,
-  options: MeterOptions
-): Partial<MetricEvent> {
-  if (options.trackCallRelationships === false) {
-    return {};
+  // Extract usage from Gemini format
+  const usage = usageMetadata as Record<string, unknown> | null;
+  const inputTokens = (usage?.promptTokenCount as number) ?? 0;
+  const outputTokens = (usage?.candidatesTokenCount as number) ?? 0;
+  const totalTokens = (usage?.totalTokenCount as number) ?? 0;
+  const cachedTokens = (usage?.cachedContentTokenCount as number) ?? 0;
+
+  // Build base event
+  const event: MetricEvent = {
+    trace_id: relationship?.traceId ?? spanId, // Use trace from context, fallback to spanId
+    span_id: spanId,
+    request_id: null, // Gemini doesn't provide request IDs
+    provider: "gemini",
+    model: extractModelName(model),
+    stream,
+    timestamp: new Date().toISOString(),
+    latency_ms: latencyMs,
+    input_tokens: inputTokens,
+    output_tokens: outputTokens,
+    total_tokens: totalTokens,
+    cached_tokens: cachedTokens,
+    reasoning_tokens: 0, // Gemini doesn't have this concept yet
+  };
+
+  // Add error if present
+  if (error) {
+    event.error = error;
   }
 
-  const relationship = getCallRelationship(traceId);
-  const agentStack = getFullAgentStack();
+  // Add relationship data if enabled
+  if (relationship) {
+    const agentStack = getFullAgentStack();
 
-  return {
-    sessionId: relationship.sessionId,
-    parentTraceId: relationship.parentTraceId,
-    callSequence: relationship.callSequence,
-    agentStack: agentStack.length > 0 ? agentStack : undefined,
-    callSite: relationship.callSite ?? undefined,
-  };
+    if (relationship.parentSpanId) {
+      event.parent_span_id = relationship.parentSpanId;
+    }
+    if (relationship.callSequence !== undefined) {
+      event.call_sequence = relationship.callSequence;
+    }
+    if (agentStack.length > 0) {
+      event.agent_stack = agentStack;
+    }
+    if (relationship.callSite) {
+      event.call_site_file = relationship.callSite.file;
+      event.call_site_line = relationship.callSite.line;
+      event.call_site_column = relationship.callSite.column;
+      if (relationship.callSite.function) {
+        event.call_site_function = relationship.callSite.function;
+      }
+    }
+    if (relationship.callStack && relationship.callStack.length > 0) {
+      event.call_stack = relationship.callStack;
+    }
+  }
+
+  return event;
 }
 
 /**
@@ -108,10 +121,8 @@ function wrapGenerateContent(
   ): Promise<unknown> {
     const options = getOptions();
     const model = getModel();
-    const traceId = options.generateTraceId?.() ?? randomUUID();
+    const spanId = options.generateSpanId?.() ?? randomUUID();
     const t0 = Date.now();
-    const reqMeta = buildRequestMetadata(model, traceId);
-    const relationshipData = getRelationshipData(traceId, options);
 
     try {
       const result = await originalFn.apply(this, args);
@@ -121,26 +132,14 @@ function wrapGenerateContent(
       const usageMetadata = response?.usageMetadata ??
         (response?.response as Record<string, unknown>)?.usageMetadata;
 
-      const event: MetricEvent = {
-        ...reqMeta,
-        ...relationshipData,
-        requestId: null, // Gemini doesn't provide request IDs
-        latency_ms: Date.now() - t0,
-        usage: normalizeGeminiUsage(usageMetadata),
-      };
-
+      const event = buildFlatEvent(spanId, model, false, Date.now() - t0, usageMetadata, options);
       await options.emitMetric(event);
       return result;
     } catch (error) {
-      const event: MetricEvent = {
-        ...reqMeta,
-        ...relationshipData,
-        requestId: null,
-        latency_ms: Date.now() - t0,
-        usage: null,
-        error: error instanceof Error ? error.message : String(error),
-      };
-
+      const event = buildFlatEvent(
+        spanId, model, false, Date.now() - t0, null, options,
+        error instanceof Error ? error.message : String(error)
+      );
       await options.emitMetric(event);
       throw error;
     }
@@ -168,13 +167,8 @@ function wrapGenerateContentStream(
   ): Promise<unknown> {
     const options = getOptions();
     const model = getModel();
-    const traceId = options.generateTraceId?.() ?? randomUUID();
+    const spanId = options.generateSpanId?.() ?? randomUUID();
     const t0 = Date.now();
-    const reqMeta: RequestMetadata = {
-      ...buildRequestMetadata(model, traceId),
-      stream: true,
-    };
-    const relationshipData = getRelationshipData(traceId, options);
 
     try {
       const streamResult = await originalFn.apply(this, args);
@@ -198,25 +192,17 @@ function wrapGenerateContentStream(
               metricsEmitted = true;
 
               // Get usage from the response promise
-              let finalUsage: NormalizedUsage | null = null;
+              let usageMetadata: unknown = null;
               try {
                 const response = await (result as { response?: Promise<unknown> }).response;
                 if (response && typeof response === "object") {
-                  const resp = response as Record<string, unknown>;
-                  finalUsage = normalizeGeminiUsage(resp.usageMetadata);
+                  usageMetadata = (response as Record<string, unknown>).usageMetadata;
                 }
               } catch {
                 // Response promise may have failed
               }
 
-              const event: MetricEvent = {
-                ...reqMeta,
-                ...relationshipData,
-                requestId: null,
-                latency_ms: Date.now() - t0,
-                usage: finalUsage,
-              };
-
+              const event = buildFlatEvent(spanId, model, true, Date.now() - t0, usageMetadata, options);
               await options.emitMetric(event);
             }
           }
@@ -230,26 +216,14 @@ function wrapGenerateContentStream(
       }
 
       // Fallback: emit metrics immediately if not a proper stream
-      const event: MetricEvent = {
-        ...reqMeta,
-        ...relationshipData,
-        requestId: null,
-        latency_ms: Date.now() - t0,
-        usage: null,
-      };
-
+      const event = buildFlatEvent(spanId, model, true, Date.now() - t0, null, options);
       await options.emitMetric(event);
       return result;
     } catch (error) {
-      const event: MetricEvent = {
-        ...reqMeta,
-        ...relationshipData,
-        requestId: null,
-        latency_ms: Date.now() - t0,
-        usage: null,
-        error: error instanceof Error ? error.message : String(error),
-      };
-
+      const event = buildFlatEvent(
+        spanId, model, true, Date.now() - t0, null, options,
+        error instanceof Error ? error.message : String(error)
+      );
       await options.emitMetric(event);
       throw error;
     }
@@ -270,12 +244,10 @@ function wrapSendMessage(
   ): Promise<unknown> {
     const options = getOptions();
     const model = getModel();
-    const traceId = options.generateTraceId?.() ?? randomUUID();
+    const spanId = options.generateSpanId?.() ?? randomUUID();
     const t0 = Date.now();
-    const reqMeta = buildRequestMetadata(model, traceId);
-    const relationshipData = getRelationshipData(traceId, options);
 
-    console.log(`[llm-meter] Gemini sendMessage called, model: ${reqMeta.model}`);
+    console.log(`[llm-meter] Gemini sendMessage called, model: ${extractModelName(model)}`);
 
     try {
       const result = await originalFn.apply(this, args);
@@ -285,27 +257,15 @@ function wrapSendMessage(
       const usageMetadata = response?.usageMetadata ??
         (response?.response as Record<string, unknown>)?.usageMetadata;
 
-      const event: MetricEvent = {
-        ...reqMeta,
-        ...relationshipData,
-        requestId: null,
-        latency_ms: Date.now() - t0,
-        usage: normalizeGeminiUsage(usageMetadata),
-      };
-
-      console.log(`[llm-meter] Gemini sendMessage completed, latency: ${event.latency_ms}ms, usage:`, event.usage);
+      const event = buildFlatEvent(spanId, model, false, Date.now() - t0, usageMetadata, options);
+      console.log(`[llm-meter] Gemini sendMessage completed, latency: ${event.latency_ms}ms, tokens: ${event.input_tokens}/${event.output_tokens}`);
       await options.emitMetric(event);
       return result;
     } catch (error) {
-      const event: MetricEvent = {
-        ...reqMeta,
-        ...relationshipData,
-        requestId: null,
-        latency_ms: Date.now() - t0,
-        usage: null,
-        error: error instanceof Error ? error.message : String(error),
-      };
-
+      const event = buildFlatEvent(
+        spanId, model, false, Date.now() - t0, null, options,
+        error instanceof Error ? error.message : String(error)
+      );
       await options.emitMetric(event);
       throw error;
     }
@@ -333,13 +293,8 @@ function wrapSendMessageStream(
   ): Promise<unknown> {
     const options = getOptions();
     const model = getModel();
-    const traceId = options.generateTraceId?.() ?? randomUUID();
+    const spanId = options.generateSpanId?.() ?? randomUUID();
     const t0 = Date.now();
-    const reqMeta: RequestMetadata = {
-      ...buildRequestMetadata(model, traceId),
-      stream: true,
-    };
-    const relationshipData = getRelationshipData(traceId, options);
 
     try {
       const streamResult = await originalFn.apply(this, args);
@@ -363,25 +318,17 @@ function wrapSendMessageStream(
               metricsEmitted = true;
 
               // Get usage from the response promise
-              let finalUsage: NormalizedUsage | null = null;
+              let usageMetadata: unknown = null;
               try {
                 const response = await (result as { response?: Promise<unknown> }).response;
                 if (response && typeof response === "object") {
-                  const resp = response as Record<string, unknown>;
-                  finalUsage = normalizeGeminiUsage(resp.usageMetadata);
+                  usageMetadata = (response as Record<string, unknown>).usageMetadata;
                 }
               } catch {
                 // Response promise may have failed
               }
 
-              const event: MetricEvent = {
-                ...reqMeta,
-                ...relationshipData,
-                requestId: null,
-                latency_ms: Date.now() - t0,
-                usage: finalUsage,
-              };
-
+              const event = buildFlatEvent(spanId, model, true, Date.now() - t0, usageMetadata, options);
               await options.emitMetric(event);
             }
           }
@@ -395,26 +342,14 @@ function wrapSendMessageStream(
       }
 
       // Fallback: emit metrics immediately
-      const event: MetricEvent = {
-        ...reqMeta,
-        ...relationshipData,
-        requestId: null,
-        latency_ms: Date.now() - t0,
-        usage: null,
-      };
-
+      const event = buildFlatEvent(spanId, model, true, Date.now() - t0, null, options);
       await options.emitMetric(event);
       return result;
     } catch (error) {
-      const event: MetricEvent = {
-        ...reqMeta,
-        ...relationshipData,
-        requestId: null,
-        latency_ms: Date.now() - t0,
-        usage: null,
-        error: error instanceof Error ? error.message : String(error),
-      };
-
+      const event = buildFlatEvent(
+        spanId, model, true, Date.now() - t0, null, options,
+        error instanceof Error ? error.message : String(error)
+      );
       await options.emitMetric(event);
       throw error;
     }

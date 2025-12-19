@@ -58,38 +58,88 @@ export interface CallSite {
 }
 
 /**
- * Complete metric event emitted after each API call
+ * Complete metric event emitted after each API call.
+ * All fields are flat (not nested) for consistent cross-provider analytics.
+ * Uses OpenTelemetry-compatible naming: trace_id groups operations, span_id identifies each operation.
  */
-export interface MetricEvent extends RequestMetadata {
-  /** OpenAI request ID for correlation */
-  requestId: string | null;
+export interface MetricEvent {
+  // === Identity (OTel-compatible) ===
+  /** Trace ID grouping related operations (OTel standard) */
+  trace_id: string;
+  /** Unique span ID for this specific operation (OTel standard) */
+  span_id: string;
+  /** Parent span ID for nested/hierarchical calls (OTel standard) */
+  parent_span_id?: string;
+  /** Provider-specific request ID (if available) */
+  request_id: string | null;
+  /** LLM provider: openai, gemini, anthropic */
+  provider: "openai" | "gemini" | "anthropic";
+  /** Model used for the request */
+  model: string;
+  /** Whether streaming was enabled */
+  stream: boolean;
+  /** ISO timestamp when the request started */
+  timestamp: string;
+
+  // === Performance ===
   /** Request latency in milliseconds */
   latency_ms: number;
-  /** Normalized usage metrics */
-  usage: NormalizedUsage | null;
   /** HTTP status code (if available) */
   status_code?: number;
   /** Error message if request failed */
   error?: string;
-  /** Rate limit information */
-  rate_limit?: RateLimitInfo;
-  /** Tool calls made during the request */
-  tool_calls?: ToolCallMetric[];
+
+  // === Token Usage (flat, consistent across providers) ===
+  /** Input/prompt tokens consumed */
+  input_tokens: number;
+  /** Output/completion tokens consumed */
+  output_tokens: number;
+  /** Total tokens (input + output) */
+  total_tokens: number;
+  /** Tokens served from cache (reduces cost) */
+  cached_tokens: number;
+  /** Reasoning tokens used (for o1/o3 models) */
+  reasoning_tokens: number;
+
+  // === Rate Limits (flat) ===
+  /** Remaining requests in current window */
+  rate_limit_remaining_requests?: number;
+  /** Remaining tokens in current window */
+  rate_limit_remaining_tokens?: number;
+  /** Time until request limit resets (seconds) */
+  rate_limit_reset_requests?: number;
+  /** Time until token limit resets (seconds) */
+  rate_limit_reset_tokens?: number;
+
+  // === Call Relationship Tracking ===
+  /** Sequence number within the trace */
+  call_sequence?: number;
+  /** Stack of agent/handler names leading to this call */
+  agent_stack?: string[];
+
+  // === Call Site (flat) ===
+  /** File path where the call originated (immediate caller) */
+  call_site_file?: string;
+  /** Line number where the call originated */
+  call_site_line?: number;
+  /** Column number where the call originated */
+  call_site_column?: number;
+  /** Function name where the call originated */
+  call_site_function?: string;
+  /** Full call stack for detailed tracing (file:line:function) */
+  call_stack?: string[];
+
+  // === Tool Usage ===
+  /** Number of tool calls made */
+  tool_call_count?: number;
+  /** Tool names that were called (comma-separated) */
+  tool_names?: string;
+
+  // === Provider-specific (optional) ===
+  /** Service tier (OpenAI: auto, default, flex, priority) */
+  service_tier?: string;
   /** Custom metadata attached to the request */
   metadata?: Record<string, string>;
-
-  // Call relationship tracking (auto-detected)
-
-  /** Session ID grouping related calls together */
-  sessionId?: string;
-  /** Parent trace ID for nested/hierarchical calls */
-  parentTraceId?: string;
-  /** Sequence number within the session */
-  callSequence?: number;
-  /** Stack of agent/handler names leading to this call */
-  agentStack?: string[];
-  /** Source code location where this call originated */
-  callSite?: CallSite;
 }
 
 /**
@@ -131,7 +181,9 @@ export interface BeforeRequestContext {
   model: string;
   /** Whether this is a streaming request */
   stream: boolean;
-  /** Generated trace ID for this request */
+  /** Generated span ID for this request (OTel standard) */
+  spanId: string;
+  /** Trace ID grouping related operations (OTel standard) */
   traceId: string;
   /** Timestamp when the request was initiated */
   timestamp: Date;
@@ -207,8 +259,8 @@ export interface MeterOptions {
   emitMetric: MetricEmitter;
   /** Whether to include tool call metrics (default: true) */
   trackToolCalls?: boolean;
-  /** Custom trace ID generator (default: crypto.randomUUID) */
-  generateTraceId?: () => string;
+  /** Custom span ID generator (default: crypto.randomUUID) */
+  generateSpanId?: () => string;
   /**
    * Hook called before each request for user-defined rate limiting.
    * Can cancel requests, throttle them with a delay, or allow them to proceed.

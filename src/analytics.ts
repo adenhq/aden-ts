@@ -115,16 +115,16 @@ export class AnalyticsEngine {
    * Calculate cost for a single event
    */
   private calculateEventCost(event: MetricEvent): number {
-    if (!event.usage) return 0;
+    if (event.input_tokens === 0 && event.output_tokens === 0) return 0;
 
     const pricing = this.getModelPricing(event.model);
-    const uncachedInput = event.usage.input_tokens - event.usage.cached_tokens;
-    const cachedInput = event.usage.cached_tokens;
+    const uncachedInput = event.input_tokens - event.cached_tokens;
+    const cachedInput = event.cached_tokens;
 
     return (
       (uncachedInput / 1_000_000) * pricing.input +
       (cachedInput / 1_000_000) * pricing.cached +
-      (event.usage.output_tokens / 1_000_000) * pricing.output
+      (event.output_tokens / 1_000_000) * pricing.output
     );
   }
 
@@ -157,9 +157,9 @@ export class AnalyticsEngine {
       costByModel[baseModel] = (costByModel[baseModel] ?? 0) + cost;
 
       // Calculate cache savings
-      if (event.usage?.cached_tokens) {
+      if (event.cached_tokens > 0) {
         const pricing = this.getModelPricing(event.model);
-        const savedCost = (event.usage.cached_tokens / 1_000_000) * (pricing.input - pricing.cached);
+        const savedCost = (event.cached_tokens / 1_000_000) * (pricing.input - pricing.cached);
         totalCacheSavings += savedCost;
       }
     }
@@ -195,12 +195,10 @@ export class AnalyticsEngine {
     let totalReasoningTokens = 0;
 
     for (const event of this.events) {
-      if (event.usage) {
-        totalInputTokens += event.usage.input_tokens;
-        totalOutputTokens += event.usage.output_tokens;
-        totalCachedTokens += event.usage.cached_tokens;
-        totalReasoningTokens += event.usage.reasoning_tokens;
-      }
+      totalInputTokens += event.input_tokens;
+      totalOutputTokens += event.output_tokens;
+      totalCachedTokens += event.cached_tokens;
+      totalReasoningTokens += event.reasoning_tokens;
     }
 
     const totalTokens = totalInputTokens + totalOutputTokens;

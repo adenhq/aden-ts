@@ -11,7 +11,6 @@ import type {
   MetricEvent,
   MeterOptions,
   NormalizedUsage,
-  RequestMetadata,
   ToolCallMetric,
 } from "./types.js";
 
@@ -79,41 +78,78 @@ function extractToolCalls(response: unknown): ToolCallMetric[] {
 }
 
 /**
- * Build request metadata for Anthropic
+ * Build a flat MetricEvent for Anthropic (OTel-compatible)
  */
-function buildRequestMetadata(
+function buildFlatEvent(
+  spanId: string,
   params: Record<string, unknown>,
-  traceId: string
-): RequestMetadata {
-  return {
-    traceId,
-    model: params.model as string,
-    max_output_tokens: params.max_tokens as number | undefined,
-    stream: !!params.stream,
-  };
-}
+  stream: boolean,
+  latencyMs: number,
+  usage: NormalizedUsage | null,
+  requestId: string | null,
+  meterOptions: MeterOptions,
+  toolCalls?: ToolCallMetric[],
+  error?: string
+): MetricEvent {
+  // Get relationship data first to get trace_id
+  const relationship = meterOptions.trackCallRelationships !== false
+    ? getCallRelationship(spanId)
+    : null;
 
-/**
- * Get relationship data if enabled
- */
-function getRelationshipData(
-  traceId: string,
-  options: MeterOptions
-): Partial<MetricEvent> {
-  if (options.trackCallRelationships === false) {
-    return {};
+  const event: MetricEvent = {
+    trace_id: relationship?.traceId ?? spanId, // Use trace from context, fallback to spanId
+    span_id: spanId,
+    request_id: requestId,
+    provider: "anthropic",
+    model: params.model as string,
+    stream,
+    timestamp: new Date().toISOString(),
+    latency_ms: latencyMs,
+    input_tokens: usage?.input_tokens ?? 0,
+    output_tokens: usage?.output_tokens ?? 0,
+    total_tokens: usage?.total_tokens ?? 0,
+    cached_tokens: usage?.cached_tokens ?? 0,
+    reasoning_tokens: usage?.reasoning_tokens ?? 0,
+  };
+
+  // Add error if present
+  if (error) {
+    event.error = error;
   }
 
-  const relationship = getCallRelationship(traceId);
-  const agentStack = getFullAgentStack();
+  // Add tool call info
+  if (toolCalls && toolCalls.length > 0) {
+    event.tool_call_count = toolCalls.length;
+    event.tool_names = toolCalls.map(t => t.name ?? t.type).join(", ");
+  }
 
-  return {
-    sessionId: relationship.sessionId,
-    parentTraceId: relationship.parentTraceId,
-    callSequence: relationship.callSequence,
-    agentStack: agentStack.length > 0 ? agentStack : undefined,
-    callSite: relationship.callSite ?? undefined,
-  };
+  // Add relationship data if enabled
+  if (relationship) {
+    const agentStack = getFullAgentStack();
+
+    if (relationship.parentSpanId) {
+      event.parent_span_id = relationship.parentSpanId;
+    }
+    if (relationship.callSequence !== undefined) {
+      event.call_sequence = relationship.callSequence;
+    }
+    if (agentStack.length > 0) {
+      event.agent_stack = agentStack;
+    }
+    if (relationship.callSite) {
+      event.call_site_file = relationship.callSite.file;
+      event.call_site_line = relationship.callSite.line;
+      event.call_site_column = relationship.callSite.column;
+      if (relationship.callSite.function) {
+        event.call_site_function = relationship.callSite.function;
+      }
+    }
+    if (relationship.callStack && relationship.callStack.length > 0) {
+      event.call_stack = relationship.callStack;
+    }
+  }
+
+  return event;
 }
 
 /**
@@ -121,10 +157,10 @@ function getRelationshipData(
  */
 function createMeteredStream<T extends AsyncIterable<unknown>>(
   stream: T,
-  reqMeta: RequestMetadata,
-  relationshipData: Partial<MetricEvent>,
+  spanId: string,
+  params: Record<string, unknown>,
   t0: number,
-  options: MeterOptions
+  meterOptions: MeterOptions
 ): T {
   const originalIterator = stream[Symbol.asyncIterator]();
   let finalUsage: NormalizedUsage | null = null;
@@ -156,7 +192,7 @@ function createMeteredStream<T extends AsyncIterable<unknown>>(
 
         // Capture tool_use from content_block_start
         if (
-          options.trackToolCalls !== false &&
+          meterOptions.trackToolCalls !== false &&
           event.type === "content_block_start"
         ) {
           const contentBlock = event.content_block as Record<string, unknown>;
@@ -170,31 +206,21 @@ function createMeteredStream<T extends AsyncIterable<unknown>>(
       }
 
       if (result.done) {
-        const metricEvent: MetricEvent = {
-          ...reqMeta,
-          ...relationshipData,
-          requestId,
-          latency_ms: Date.now() - t0,
-          usage: finalUsage,
-          tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
-        };
-
-        await options.emitMetric(metricEvent);
+        const metricEvent = buildFlatEvent(
+          spanId, params, true, Date.now() - t0, finalUsage,
+          requestId, meterOptions, toolCalls.length > 0 ? toolCalls : undefined
+        );
+        await meterOptions.emitMetric(metricEvent);
       }
 
       return result;
     },
     async return(value?: unknown) {
-      const metricEvent: MetricEvent = {
-        ...reqMeta,
-        ...relationshipData,
-        requestId,
-        latency_ms: Date.now() - t0,
-        usage: finalUsage,
-        tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
-      };
-
-      await options.emitMetric(metricEvent);
+      const metricEvent = buildFlatEvent(
+        spanId, params, true, Date.now() - t0, finalUsage,
+        requestId, meterOptions, toolCalls.length > 0 ? toolCalls : undefined
+      );
+      await meterOptions.emitMetric(metricEvent);
 
       if (originalIterator.return) {
         return originalIterator.return(value);
@@ -202,16 +228,11 @@ function createMeteredStream<T extends AsyncIterable<unknown>>(
       return { done: true, value: undefined };
     },
     async throw(error?: unknown) {
-      const metricEvent: MetricEvent = {
-        ...reqMeta,
-        ...relationshipData,
-        requestId,
-        latency_ms: Date.now() - t0,
-        usage: null,
-        error: error instanceof Error ? error.message : String(error),
-      };
-
-      await options.emitMetric(metricEvent);
+      const metricEvent = buildFlatEvent(
+        spanId, params, true, Date.now() - t0, null, requestId, meterOptions, undefined,
+        error instanceof Error ? error.message : String(error)
+      );
+      await meterOptions.emitMetric(metricEvent);
 
       if (originalIterator.throw) {
         return originalIterator.throw(error);
@@ -240,11 +261,9 @@ function wrapMessagesCreate(
     params: Record<string, unknown>,
     ...rest: unknown[]
   ) {
-    const options = getOptions();
-    const traceId = options.generateTraceId?.() ?? randomUUID();
+    const meterOptions = getOptions();
+    const spanId = meterOptions.generateSpanId?.() ?? randomUUID();
     const t0 = Date.now();
-    const reqMeta = buildRequestMetadata(params, traceId);
-    const relationshipData = getRelationshipData(traceId, options);
 
     try {
       const result = await originalFn.call(this, params, ...rest);
@@ -258,40 +277,31 @@ function wrapMessagesCreate(
       ) {
         return createMeteredStream(
           result as AsyncIterable<unknown>,
-          reqMeta,
-          relationshipData,
+          spanId,
+          params,
           t0,
-          options
+          meterOptions
         );
       }
 
       // Non-streaming response
       const response = result as Record<string, unknown>;
-      const event: MetricEvent = {
-        ...reqMeta,
-        ...relationshipData,
-        requestId: extractRequestId(result),
-        latency_ms: Date.now() - t0,
-        usage: normalizeAnthropicUsage(response?.usage),
-        tool_calls:
-          options.trackToolCalls !== false
-            ? extractToolCalls(result)
-            : undefined,
-      };
+      const usage = normalizeAnthropicUsage(response?.usage);
+      const toolCalls = meterOptions.trackToolCalls !== false ? extractToolCalls(result) : undefined;
+      const event = buildFlatEvent(
+        spanId, params, false, Date.now() - t0, usage,
+        extractRequestId(result), meterOptions, toolCalls
+      );
 
-      await options.emitMetric(event);
+      await meterOptions.emitMetric(event);
       return result;
     } catch (error) {
-      const event: MetricEvent = {
-        ...reqMeta,
-        ...relationshipData,
-        requestId: null,
-        latency_ms: Date.now() - t0,
-        usage: null,
-        error: error instanceof Error ? error.message : String(error),
-      };
+      const event = buildFlatEvent(
+        spanId, params, false, Date.now() - t0, null, null, meterOptions, undefined,
+        error instanceof Error ? error.message : String(error)
+      );
 
-      await options.emitMetric(event);
+      await meterOptions.emitMetric(event);
       throw error;
     }
   };

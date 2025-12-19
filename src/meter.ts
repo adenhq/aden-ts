@@ -7,7 +7,6 @@ import type {
   MeteredOpenAI,
   ToolCallMetric,
   NormalizedUsage,
-  RequestMetadata,
   BeforeRequestContext,
   BeforeRequestResult,
 } from "./types.js";
@@ -83,45 +82,84 @@ function extractToolCalls(response: unknown): ToolCallMetric[] {
 }
 
 /**
- * Builds request metadata from params
+ * Build a flat MetricEvent for OpenAI (OTel-compatible)
  */
-function buildRequestMetadata(
+function buildFlatEvent(
+  spanId: string,
   params: Record<string, unknown>,
-  traceId: string
-): RequestMetadata {
-  return {
-    traceId,
-    model: params.model as string,
-    service_tier: params.service_tier as string | undefined,
-    max_output_tokens: params.max_output_tokens as number | undefined,
-    max_tool_calls: params.max_tool_calls as number | undefined,
-    prompt_cache_key: params.prompt_cache_key as string | undefined,
-    prompt_cache_retention: params.prompt_cache_retention as string | undefined,
-    stream: !!params.stream,
-  };
-}
+  stream: boolean,
+  latencyMs: number,
+  usage: NormalizedUsage | null,
+  requestId: string | null,
+  meterOptions: MeterOptions,
+  toolCalls?: ToolCallMetric[],
+  error?: string
+): MetricEvent {
+  // Get relationship data first to get trace_id
+  const relationship = meterOptions.trackCallRelationships !== false
+    ? getCallRelationship(spanId)
+    : null;
 
-/**
- * Get call relationship data if tracking is enabled
- */
-function getRelationshipData(
-  traceId: string,
-  meterOptions: MeterOptions
-): Partial<MetricEvent> {
-  if (meterOptions.trackCallRelationships === false) {
-    return {};
+  // Build base event with flat structure
+  const event: MetricEvent = {
+    trace_id: relationship?.traceId ?? spanId, // Use trace from context, fallback to spanId
+    span_id: spanId,
+    request_id: requestId,
+    provider: "openai",
+    model: params.model as string,
+    stream,
+    timestamp: new Date().toISOString(),
+    latency_ms: latencyMs,
+    input_tokens: usage?.input_tokens ?? 0,
+    output_tokens: usage?.output_tokens ?? 0,
+    total_tokens: usage?.total_tokens ?? 0,
+    cached_tokens: usage?.cached_tokens ?? 0,
+    reasoning_tokens: usage?.reasoning_tokens ?? 0,
+  };
+
+  // Add service tier if present
+  if (params.service_tier) {
+    event.service_tier = params.service_tier as string;
   }
 
-  const relationship = getCallRelationship(traceId);
-  const agentStack = getFullAgentStack();
+  // Add error if present
+  if (error) {
+    event.error = error;
+  }
 
-  return {
-    sessionId: relationship.sessionId,
-    parentTraceId: relationship.parentTraceId,
-    callSequence: relationship.callSequence,
-    agentStack: agentStack.length > 0 ? agentStack : undefined,
-    callSite: relationship.callSite ?? undefined,
-  };
+  // Add tool call info
+  if (toolCalls && toolCalls.length > 0) {
+    event.tool_call_count = toolCalls.length;
+    event.tool_names = toolCalls.map(t => t.name ?? t.type).join(", ");
+  }
+
+  // Add relationship data if enabled
+  if (relationship) {
+    const agentStack = getFullAgentStack();
+
+    if (relationship.parentSpanId) {
+      event.parent_span_id = relationship.parentSpanId;
+    }
+    if (relationship.callSequence !== undefined) {
+      event.call_sequence = relationship.callSequence;
+    }
+    if (agentStack.length > 0) {
+      event.agent_stack = agentStack;
+    }
+    if (relationship.callSite) {
+      event.call_site_file = relationship.callSite.file;
+      event.call_site_line = relationship.callSite.line;
+      event.call_site_column = relationship.callSite.column;
+      if (relationship.callSite.function) {
+        event.call_site_function = relationship.callSite.function;
+      }
+    }
+    if (relationship.callStack && relationship.callStack.length > 0) {
+      event.call_stack = relationship.callStack;
+    }
+  }
+
+  return event;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -167,12 +205,14 @@ async function executeBeforeRequestHook(
  */
 function buildBeforeRequestContext(
   params: Record<string, unknown>,
+  spanId: string,
   traceId: string,
   meterOptions: MeterOptions
 ): BeforeRequestContext {
   return {
     model: params.model as string,
     stream: !!params.stream,
+    spanId,
     traceId,
     timestamp: new Date(),
     metadata: meterOptions.requestMetadata,
@@ -188,42 +228,30 @@ async function meterNonStreamingCall<T>(
   options: unknown[],
   meterOptions: MeterOptions
 ): Promise<T> {
-  const traceId = meterOptions.generateTraceId?.() ?? randomUUID();
+  const spanId = meterOptions.generateSpanId?.() ?? randomUUID();
   const t0 = Date.now();
-  const reqMeta = buildRequestMetadata(params, traceId);
-  const relationshipData = getRelationshipData(traceId, meterOptions);
 
   // Execute beforeRequest hook (may throttle or cancel)
-  const beforeCtx = buildBeforeRequestContext(params, traceId, meterOptions);
+  // Note: traceId will be determined by context, use spanId as fallback
+  const beforeCtx = buildBeforeRequestContext(params, spanId, spanId, meterOptions);
   await executeBeforeRequestHook(params, beforeCtx, meterOptions);
 
   try {
     const res = await originalFn(params, ...options);
+    const usage = normalizeUsage((res as Record<string, unknown>)?.usage);
+    const toolCalls = meterOptions.trackToolCalls !== false ? extractToolCalls(res) : undefined;
 
-    const event: MetricEvent = {
-      ...reqMeta,
-      ...relationshipData,
-      requestId: extractRequestId(res),
-      latency_ms: Date.now() - t0,
-      usage: normalizeUsage((res as Record<string, unknown>)?.usage),
-      tool_calls:
-        meterOptions.trackToolCalls !== false
-          ? extractToolCalls(res)
-          : undefined,
-    };
-
+    const event = buildFlatEvent(
+      spanId, params, false, Date.now() - t0, usage,
+      extractRequestId(res), meterOptions, toolCalls
+    );
     await meterOptions.emitMetric(event);
     return res;
   } catch (error) {
-    const event: MetricEvent = {
-      ...reqMeta,
-      ...relationshipData,
-      requestId: null,
-      latency_ms: Date.now() - t0,
-      usage: null,
-      error: error instanceof Error ? error.message : String(error),
-    };
-
+    const event = buildFlatEvent(
+      spanId, params, false, Date.now() - t0, null, null, meterOptions, undefined,
+      error instanceof Error ? error.message : String(error)
+    );
     await meterOptions.emitMetric(event);
     throw error;
   }
@@ -234,8 +262,8 @@ async function meterNonStreamingCall<T>(
  */
 function createMeteredStream<T extends AsyncIterable<unknown>>(
   stream: T,
-  reqMeta: RequestMetadata,
-  relationshipData: Partial<MetricEvent>,
+  spanId: string,
+  params: Record<string, unknown>,
   t0: number,
   meterOptions: MeterOptions
 ): T {
@@ -286,15 +314,10 @@ function createMeteredStream<T extends AsyncIterable<unknown>>(
 
       // When stream ends, emit metrics
       if (result.done) {
-        const metricEvent: MetricEvent = {
-          ...reqMeta,
-          ...relationshipData,
-          requestId,
-          latency_ms: Date.now() - t0,
-          usage: finalUsage,
-          tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
-        };
-
+        const metricEvent = buildFlatEvent(
+          spanId, params, true, Date.now() - t0, finalUsage,
+          requestId, meterOptions, toolCalls.length > 0 ? toolCalls : undefined
+        );
         await meterOptions.emitMetric(metricEvent);
       }
 
@@ -302,15 +325,10 @@ function createMeteredStream<T extends AsyncIterable<unknown>>(
     },
     async return(value?: unknown) {
       // Handle early termination
-      const metricEvent: MetricEvent = {
-        ...reqMeta,
-        ...relationshipData,
-        requestId,
-        latency_ms: Date.now() - t0,
-        usage: finalUsage,
-        tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
-      };
-
+      const metricEvent = buildFlatEvent(
+        spanId, params, true, Date.now() - t0, finalUsage,
+        requestId, meterOptions, toolCalls.length > 0 ? toolCalls : undefined
+      );
       await meterOptions.emitMetric(metricEvent);
 
       if (originalIterator.return) {
@@ -319,15 +337,10 @@ function createMeteredStream<T extends AsyncIterable<unknown>>(
       return { done: true, value: undefined };
     },
     async throw(error?: unknown) {
-      const metricEvent: MetricEvent = {
-        ...reqMeta,
-        ...relationshipData,
-        requestId,
-        latency_ms: Date.now() - t0,
-        usage: null,
-        error: error instanceof Error ? error.message : String(error),
-      };
-
+      const metricEvent = buildFlatEvent(
+        spanId, params, true, Date.now() - t0, null, requestId, meterOptions, undefined,
+        error instanceof Error ? error.message : String(error)
+      );
       await meterOptions.emitMetric(metricEvent);
 
       if (originalIterator.throw) {
@@ -355,13 +368,11 @@ async function meterStreamingCall<T>(
   options: unknown[],
   meterOptions: MeterOptions
 ): Promise<T> {
-  const traceId = meterOptions.generateTraceId?.() ?? randomUUID();
+  const spanId = meterOptions.generateSpanId?.() ?? randomUUID();
   const t0 = Date.now();
-  const reqMeta = buildRequestMetadata(params, traceId);
-  const relationshipData = getRelationshipData(traceId, meterOptions);
 
   // Execute beforeRequest hook (may throttle or cancel)
-  const beforeCtx = buildBeforeRequestContext(params, traceId, meterOptions);
+  const beforeCtx = buildBeforeRequestContext(params, spanId, spanId, meterOptions);
   await executeBeforeRequestHook(params, beforeCtx, meterOptions);
 
   try {
@@ -375,8 +386,8 @@ async function meterStreamingCall<T>(
     ) {
       return createMeteredStream(
         stream as AsyncIterable<unknown> & T,
-        reqMeta,
-        relationshipData,
+        spanId,
+        params,
         t0,
         meterOptions
       );
@@ -385,15 +396,10 @@ async function meterStreamingCall<T>(
     // Fallback for non-iterable responses
     return stream;
   } catch (error) {
-    const event: MetricEvent = {
-      ...reqMeta,
-      ...relationshipData,
-      requestId: null,
-      latency_ms: Date.now() - t0,
-      usage: null,
-      error: error instanceof Error ? error.message : String(error),
-    };
-
+    const event = buildFlatEvent(
+      spanId, params, true, Date.now() - t0, null, null, meterOptions, undefined,
+      error instanceof Error ? error.message : String(error)
+    );
     await meterOptions.emitMetric(event);
     throw error;
   }
