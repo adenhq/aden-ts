@@ -199,8 +199,8 @@ export type BeforeRequestResult =
   | { action: "proceed" }
   | { action: "throttle"; delayMs: number }
   | { action: "cancel"; reason: string }
-  | { action: "degrade"; toModel: string; reason?: string }
-  | { action: "alert"; level: "info" | "warning" | "critical"; message: string };
+  | { action: "degrade"; toModel: string; reason?: string; delayMs?: number }
+  | { action: "alert"; level: "info" | "warning" | "critical"; message: string; delayMs?: number };
 
 /**
  * Hook called before each API request, allowing user-defined rate limiting

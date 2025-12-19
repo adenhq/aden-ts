@@ -158,6 +158,15 @@ async function executeBeforeRequestHook(
 
   // Note: "degrade" action is not directly applicable for Gemini since
   // the model is set on the GenerativeModel instance, not per-request
+  // But we still need to apply any throttle delay that's attached
+
+  if (result.action === "degrade" && result.delayMs) {
+    await sleep(result.delayMs);
+  }
+
+  if (result.action === "alert" && result.delayMs) {
+    await sleep(result.delayMs);
+  }
 
   // "alert" action allows request to proceed - the alert was already triggered
   // (handled by not throwing or returning early)

@@ -302,11 +302,19 @@ async function executeBeforeRequestHook(
   }
 
   if (result.action === "degrade") {
+    // Apply delay if throttle is combined with degrade
+    if (result.delayMs) {
+      await sleep(result.delayMs);
+    }
     // Return modified params with degraded model
     return { ...params, model: result.toModel };
   }
 
   if (result.action === "alert") {
+    // Apply delay if throttle is combined with alert
+    if (result.delayMs) {
+      await sleep(result.delayMs);
+    }
     // Alerts allow the request to proceed - the alert was already triggered
     return params;
   }

@@ -318,8 +318,13 @@ export class ControlAgent implements IControlAgent {
 
   /**
    * Evaluate policy rules against a request
+   * Priority order: block > budget/degrade > throttle > alert > allow
+   * Note: throttle adds delay but doesn't skip other checks
    */
   private evaluatePolicy(request: ControlRequest, policy: ControlPolicy): ControlDecision {
+    // Track throttle info separately (throttle is applied but doesn't skip other checks)
+    let throttleInfo: { delayMs: number; reason: string } | null = null;
+
     // 1. Check block rules first (highest priority)
     if (policy.blocks) {
       for (const block of policy.blocks) {
@@ -329,17 +334,52 @@ export class ControlAgent implements IControlAgent {
       }
     }
 
-    // 2. Check budget limits
+    // 2. Check throttle rules (rate limiting - captures delay but continues checking)
+    if (policy.throttles) {
+      for (const throttle of policy.throttles) {
+        // Match by context or global
+        if (!throttle.context_id || throttle.context_id === request.context_id) {
+          // Match by provider or all
+          if (!throttle.provider || throttle.provider === request.provider) {
+            // Check rate limit
+            if (throttle.requests_per_minute) {
+              const key = `${throttle.context_id ?? "global"}:${throttle.provider ?? "all"}`;
+              const rateInfo = this.checkRateLimit(key, throttle.requests_per_minute);
+              if (rateInfo.exceeded) {
+                throttleInfo = {
+                  delayMs: throttle.delay_ms ?? 1000,
+                  reason: `Rate limit: ${rateInfo.count}/${throttle.requests_per_minute}/min`,
+                };
+                break; // Found throttle, but continue to check budget/degrade/block
+              }
+            }
+
+            // Apply fixed delay (no rate limit, just a constant delay)
+            if (throttle.delay_ms && !throttle.requests_per_minute) {
+              throttleInfo = {
+                delayMs: throttle.delay_ms,
+                reason: "Fixed throttle delay",
+              };
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // 3. Check budget limits
     if (policy.budgets && request.context_id) {
       const budget = policy.budgets.find(b => b.context_id === request.context_id);
       if (budget) {
         const projectedSpend = budget.current_spend_usd + (request.estimated_cost ?? 0);
         if (projectedSpend > budget.limit_usd) {
+          // Budget exceeded - block takes priority over throttle
           if (budget.action_on_exceed === "degrade" && budget.degrade_to_model) {
             return {
               action: "degrade",
               reason: `Budget exceeded: $${projectedSpend.toFixed(4)} > $${budget.limit_usd}`,
               degradeToModel: budget.degrade_to_model,
+              ...(throttleInfo && { throttleDelayMs: throttleInfo.delayMs }),
             };
           }
           return {
@@ -362,6 +402,7 @@ export class ControlAgent implements IControlAgent {
                   action: "degrade",
                   reason: `Budget at ${usagePercent.toFixed(1)}% (threshold: ${degrade.threshold_percent}%)`,
                   degradeToModel: degrade.to_model,
+                  ...(throttleInfo && { throttleDelayMs: throttleInfo.delayMs }),
                 };
               }
             }
@@ -370,7 +411,7 @@ export class ControlAgent implements IControlAgent {
       }
     }
 
-    // 3. Check always-degrade rules
+    // 4. Check always-degrade rules
     if (policy.degradations) {
       for (const degrade of policy.degradations) {
         if (degrade.from_model === request.model && degrade.trigger === "always") {
@@ -379,40 +420,8 @@ export class ControlAgent implements IControlAgent {
               action: "degrade",
               reason: "Model degradation rule (always)",
               degradeToModel: degrade.to_model,
+              ...(throttleInfo && { throttleDelayMs: throttleInfo.delayMs }),
             };
-          }
-        }
-      }
-    }
-
-    // 4. Check throttle rules
-    if (policy.throttles) {
-      for (const throttle of policy.throttles) {
-        // Match by context or global
-        if (!throttle.context_id || throttle.context_id === request.context_id) {
-          // Match by provider or all
-          if (!throttle.provider || throttle.provider === request.provider) {
-            // Check rate limit
-            if (throttle.requests_per_minute) {
-              const key = `${throttle.context_id ?? "global"}:${throttle.provider ?? "all"}`;
-              const rateInfo = this.checkRateLimit(key, throttle.requests_per_minute);
-              if (rateInfo.exceeded) {
-                return {
-                  action: "throttle",
-                  reason: `Rate limit: ${rateInfo.count}/${throttle.requests_per_minute}/min`,
-                  throttleDelayMs: throttle.delay_ms ?? 1000,
-                };
-              }
-            }
-
-            // Apply fixed delay
-            if (throttle.delay_ms && !throttle.requests_per_minute) {
-              return {
-                action: "throttle",
-                reason: "Fixed throttle delay",
-                throttleDelayMs: throttle.delay_ms,
-              };
-            }
           }
         }
       }
@@ -438,14 +447,24 @@ export class ControlAgent implements IControlAgent {
             console.warn("[aden] Alert callback error:", err);
           });
 
-          // Return alert decision (request still proceeds)
+          // Return alert decision (request still proceeds, may include throttle delay)
           return {
             action: "alert",
             reason: alert.message,
             alertLevel: alert.level,
+            ...(throttleInfo && { throttleDelayMs: throttleInfo.delayMs }),
           };
         }
       }
+    }
+
+    // 6. If throttle is active but no other action, return throttle
+    if (throttleInfo) {
+      return {
+        action: "throttle",
+        reason: throttleInfo.reason,
+        throttleDelayMs: throttleInfo.delayMs,
+      };
     }
 
     return { action: "allow" };

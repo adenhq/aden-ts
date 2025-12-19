@@ -73,15 +73,27 @@ function createControlBeforeRequestHook(
 
       case "degrade":
         console.log(`[aden] Model degraded: ${params.model} → ${decision.degradeToModel} (${decision.reason})`);
-        return { action: "degrade", toModel: decision.degradeToModel!, reason: decision.reason };
+        if (decision.throttleDelayMs) {
+          console.log(`[aden] Request also throttled: ${decision.throttleDelayMs}ms delay`);
+        }
+        return {
+          action: "degrade",
+          toModel: decision.degradeToModel!,
+          reason: decision.reason,
+          ...(decision.throttleDelayMs && { delayMs: decision.throttleDelayMs }),
+        };
 
       case "alert":
         // Alerts allow the request to proceed but log the alert
         console.log(`[aden] Alert [${decision.alertLevel}]: ${decision.reason}`);
+        if (decision.throttleDelayMs) {
+          console.log(`[aden] Request also throttled: ${decision.throttleDelayMs}ms delay`);
+        }
         return {
           action: "alert",
           level: decision.alertLevel || "warning",
           message: decision.reason || "Alert triggered",
+          ...(decision.throttleDelayMs && { delayMs: decision.throttleDelayMs }),
         };
 
       case "allow":

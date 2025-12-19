@@ -44,7 +44,7 @@ async function setupPolicy() {
     headers: { Authorization: `Bearer ${apiKey}` },
   });
 
-  // 1. Budget with $0.01 limit - enough for several requests before blocking
+  // 1. Budget with $0.002 limit - small enough to trigger all thresholds
   await fetch(`${serverUrl}/v1/control/policy/budgets`, {
     method: "POST",
     headers: {
@@ -53,11 +53,11 @@ async function setupPolicy() {
     },
     body: JSON.stringify({
       context_id: USER_ID,
-      limit_usd: 0.01, // $0.01 budget
+      limit_usd: 0.002, // $0.002 budget (~4-5 requests)
       action_on_exceed: "block",
     }),
   });
-  console.log("  Budget: $0.01 limit, block on exceed");
+  console.log("  Budget: $0.002 limit, block on exceed");
 
   // 2. Throttle rule: 3 requests per minute (will trigger after 3rd request)
   await fetch(`${serverUrl}/v1/control/policy/throttles`, {
@@ -133,16 +133,17 @@ async function setupPolicy() {
   console.log(JSON.stringify(policy, null, 2));
 }
 
+const BUDGET_LIMIT = 0.002; // Must match the budget rule
+
 async function getBudgetStatus(): Promise<{ spend: number; limit: number; percent: number }> {
   const res = await fetch(`${serverUrl}/v1/control/budget/${USER_ID}`, {
     headers: { Authorization: `Bearer ${apiKey}` },
   });
   const data = await res.json();
-  const limit = 0.01;
   return {
     spend: data.current_spend_usd,
-    limit,
-    percent: (data.current_spend_usd / limit) * 100,
+    limit: BUDGET_LIMIT,
+    percent: (data.current_spend_usd / BUDGET_LIMIT) * 100,
   };
 }
 
@@ -188,13 +189,13 @@ async function main() {
   console.log("=".repeat(60));
 
   const prompts = [
-    "What is 2+2?",           // Request 1: Should allow (gpt-4o + alert)
-    "Say hello",              // Request 2: Should allow (gpt-4o + alert)
-    "What color is the sky?", // Request 3: Should allow (gpt-4o + alert)
-    "Count to 3",             // Request 4: THROTTLE (exceeded 3/min) + possible degrade
-    "Name a fruit",           // Request 5: Should be degraded (>50% budget)
-    "Say bye",                // Request 6: Might be blocked (depending on spend)
-    "Last request",           // Request 7: Likely blocked
+    "What is 2+2?",           // Request 1: ALLOW + ALERT (gpt-4o)
+    "Say hello",              // Request 2: ALLOW + ALERT (gpt-4o)
+    "What color is the sky?", // Request 3: ALLOW + ALERT + likely DEGRADE (>50% budget)
+    "Count to 3",             // Request 4: THROTTLE (>3/min) + DEGRADE + possibly BLOCK
+    "Name a fruit",           // Request 5: THROTTLE + likely BLOCKED (>100% budget)
+    "Say bye",                // Request 6: THROTTLE + BLOCKED
+    "Last request",           // Request 7: THROTTLE + BLOCKED
   ];
 
   for (let i = 0; i < prompts.length; i++) {
@@ -217,13 +218,11 @@ async function main() {
       const content = response.choices[0]?.message?.content;
       const actualModel = response.model;
 
-      // Check if model was degraded
-      if (actualModel.includes("mini") && !response.model.includes("mini")) {
-        console.log(`   DEGRADED to ${actualModel}`);
-      }
+      // Check if model was degraded (requested gpt-4o but got gpt-4o-mini)
+      const wasDegraded = actualModel.includes("mini");
 
       console.log(`   Response (${duration}ms): "${content}"`);
-      console.log(`   Model: ${actualModel}, Tokens: ${response.usage?.total_tokens}`);
+      console.log(`   Model: ${actualModel}${wasDegraded ? " (DEGRADED from gpt-4o)" : ""}, Tokens: ${response.usage?.total_tokens}`);
 
       // Check for throttle (if request took > 1.5s, it was likely throttled)
       if (duration > 1500) {
