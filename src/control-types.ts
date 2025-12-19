@@ -13,8 +13,13 @@ import type { MetricEvent } from "./types.js";
 
 /**
  * Control actions that can be applied to requests
+ * - allow: Request proceeds normally
+ * - block: Request is rejected
+ * - throttle: Request is delayed before proceeding
+ * - degrade: Request uses a cheaper/fallback model
+ * - alert: Request proceeds but triggers an alert notification
  */
-export type ControlAction = "allow" | "block" | "throttle" | "degrade";
+export type ControlAction = "allow" | "block" | "throttle" | "degrade" | "alert";
 
 /**
  * Control decision - what action to take for a request
@@ -28,6 +33,8 @@ export interface ControlDecision {
   degradeToModel?: string;
   /** If action is "throttle", delay by this many milliseconds */
   throttleDelayMs?: number;
+  /** If action is "alert", the severity level */
+  alertLevel?: "info" | "warning" | "critical";
 }
 
 // =============================================================================
@@ -190,6 +197,26 @@ export interface DegradeRule {
 }
 
 /**
+ * Alert rule - trigger notifications without blocking
+ */
+export interface AlertRule {
+  /** Context ID this rule applies to (omit for global) */
+  context_id?: string;
+  /** Provider this rule applies to (omit for all) */
+  provider?: string;
+  /** Model pattern to alert on (e.g., "gpt-4*" for expensive models) */
+  model_pattern?: string;
+  /** When to trigger the alert */
+  trigger: "budget_threshold" | "model_usage" | "always";
+  /** For budget_threshold: percentage at which to trigger (0-100) */
+  threshold_percent?: number;
+  /** Alert severity level */
+  level: "info" | "warning" | "critical";
+  /** Message to include in the alert */
+  message: string;
+}
+
+/**
  * Complete control policy from server
  */
 export interface ControlPolicy {
@@ -205,6 +232,8 @@ export interface ControlPolicy {
   blocks?: BlockRule[];
   /** Degrade rules */
   degradations?: DegradeRule[];
+  /** Alert rules */
+  alerts?: AlertRule[];
 }
 
 // =============================================================================
@@ -234,6 +263,26 @@ export interface ControlRequest {
 // =============================================================================
 
 /**
+ * Alert event passed to onAlert callback
+ */
+export interface AlertEvent {
+  /** Alert severity level */
+  level: "info" | "warning" | "critical";
+  /** Alert message */
+  message: string;
+  /** Reason the alert was triggered */
+  reason: string;
+  /** Context ID that triggered the alert */
+  contextId?: string;
+  /** Provider that triggered the alert */
+  provider: string;
+  /** Model that triggered the alert */
+  model: string;
+  /** Timestamp of the alert */
+  timestamp: Date;
+}
+
+/**
  * Options for creating a control agent
  */
 export interface ControlAgentOptions {
@@ -253,6 +302,12 @@ export interface ControlAgentOptions {
   getContextId?: () => string | undefined;
   /** SDK instance identifier (auto-generated if not provided) */
   instanceId?: string;
+  /**
+   * Callback invoked when an alert is triggered.
+   * Alerts do NOT block requests - they are notifications only.
+   * Use this for logging, notifications, or monitoring.
+   */
+  onAlert?: (alert: AlertEvent) => void | Promise<void>;
 }
 
 // =============================================================================

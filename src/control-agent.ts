@@ -11,6 +11,7 @@ import { randomUUID } from "crypto";
 import WebSocket from "ws";
 import type { MetricEvent } from "./types.js";
 import type {
+  AlertEvent,
   ControlAgentOptions,
   ControlDecision,
   ControlEvent,
@@ -60,6 +61,7 @@ export class ControlAgent implements IControlAgent {
       failOpen: options.failOpen ?? true,
       getContextId: options.getContextId ?? (() => undefined),
       instanceId: options.instanceId ?? randomUUID(),
+      onAlert: options.onAlert ?? (() => {}),
     };
   }
 
@@ -86,6 +88,12 @@ export class ControlAgent implements IControlAgent {
    */
   private async connectWebSocket(): Promise<void> {
     return new Promise((resolve, _reject) => {
+      // Helper to handle fallback to polling
+      const fallbackToPolling = async () => {
+        await this.startPolling();
+        resolve();
+      };
+
       try {
         const wsUrl = `${this.options.serverUrl}/v1/control/ws`;
         this.ws = new WebSocket(wsUrl, {
@@ -121,9 +129,8 @@ export class ControlAgent implements IControlAgent {
           console.warn("[aden] WebSocket error:", error.message);
           this.errorsSinceLastHeartbeat++;
           if (!this.connected) {
-            // Initial connection failed, start polling
-            this.startPolling();
-            resolve(); // Don't reject, we have a fallback
+            // Initial connection failed, start polling and wait for first fetch
+            fallbackToPolling();
           }
         });
 
@@ -131,14 +138,12 @@ export class ControlAgent implements IControlAgent {
         setTimeout(() => {
           if (!this.connected) {
             console.warn("[aden] WebSocket connection timeout, using polling");
-            this.startPolling();
-            resolve();
+            fallbackToPolling();
           }
         }, this.options.timeoutMs);
       } catch (error) {
         console.warn("[aden] WebSocket setup failed:", error);
-        this.startPolling();
-        resolve();
+        fallbackToPolling();
       }
     });
   }
@@ -187,12 +192,13 @@ export class ControlAgent implements IControlAgent {
 
   /**
    * Start HTTP polling for policy updates
+   * Returns a promise that resolves when the first policy fetch completes
    */
-  private startPolling(): void {
+  private async startPolling(): Promise<void> {
     if (this.pollingTimer) return;
 
-    // Fetch immediately
-    this.fetchPolicy();
+    // Fetch immediately and wait for it
+    await this.fetchPolicy();
 
     // Then poll at interval
     this.pollingTimer = setInterval(() => {
@@ -412,7 +418,81 @@ export class ControlAgent implements IControlAgent {
       }
     }
 
+    // 5. Check alert rules (alerts do NOT block - they notify and allow)
+    if (policy.alerts) {
+      for (const alert of policy.alerts) {
+        if (this.matchesAlertRule(request, alert, policy)) {
+          // Trigger the onAlert callback asynchronously (don't block)
+          const alertEvent: AlertEvent = {
+            level: alert.level,
+            message: alert.message,
+            reason: `Triggered by ${alert.trigger}`,
+            contextId: request.context_id,
+            provider: request.provider,
+            model: request.model,
+            timestamp: new Date(),
+          };
+
+          // Fire and forget - don't await to avoid blocking the request
+          Promise.resolve(this.options.onAlert(alertEvent)).catch((err) => {
+            console.warn("[aden] Alert callback error:", err);
+          });
+
+          // Return alert decision (request still proceeds)
+          return {
+            action: "alert",
+            reason: alert.message,
+            alertLevel: alert.level,
+          };
+        }
+      }
+    }
+
     return { action: "allow" };
+  }
+
+  /**
+   * Check if request matches an alert rule
+   */
+  private matchesAlertRule(
+    request: ControlRequest,
+    alert: { context_id?: string; provider?: string; model_pattern?: string; trigger: string; threshold_percent?: number },
+    policy: ControlPolicy
+  ): boolean {
+    // Check context match
+    if (alert.context_id && alert.context_id !== request.context_id) return false;
+
+    // Check provider match
+    if (alert.provider && alert.provider !== request.provider) return false;
+
+    // Check model pattern match
+    if (alert.model_pattern) {
+      const regex = new RegExp("^" + alert.model_pattern.replace(/\*/g, ".*") + "$");
+      if (!regex.test(request.model)) return false;
+    }
+
+    // Check trigger conditions
+    switch (alert.trigger) {
+      case "always":
+        return true;
+
+      case "model_usage":
+        // Model pattern already matched above
+        return true;
+
+      case "budget_threshold":
+        if (alert.threshold_percent && request.context_id && policy.budgets) {
+          const budget = policy.budgets.find(b => b.context_id === request.context_id);
+          if (budget) {
+            const usagePercent = (budget.current_spend_usd / budget.limit_usd) * 100;
+            return usagePercent >= alert.threshold_percent;
+          }
+        }
+        return false;
+
+      default:
+        return false;
+    }
   }
 
   /**
@@ -453,11 +533,21 @@ export class ControlAgent implements IControlAgent {
    * Report a metric event to the server
    */
   async reportMetric(event: MetricEvent): Promise<void> {
+    // Inject context_id into the metric metadata
+    const contextId = this.options.getContextId?.();
+    const enrichedEvent: MetricEvent = {
+      ...event,
+      metadata: {
+        ...event.metadata,
+        ...(contextId && { context_id: contextId }),
+      },
+    };
+
     const wrapper: MetricEventWrapper = {
       event_type: "metric",
       timestamp: new Date().toISOString(),
       sdk_instance_id: this.options.instanceId,
-      data: event,
+      data: enrichedEvent,
     };
 
     await this.sendEvent(wrapper);

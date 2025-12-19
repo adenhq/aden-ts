@@ -7,7 +7,7 @@
 
 import { randomUUID } from "crypto";
 import { getCallRelationship, getFullAgentStack, getCurrentContext } from "./context.js";
-import { DEFAULT_CONTROL_SERVER, type MetricEvent, type MeterOptions } from "./types.js";
+import { getControlServerUrl, type MetricEvent, type MeterOptions } from "./types.js";
 import type { ControlDecision, IControlAgent } from "./control-types.js";
 import { createControlAgent, createControlAgentEmitter } from "./control-agent.js";
 
@@ -37,7 +37,7 @@ async function resolveOptions(options: MeterOptions): Promise<MeterOptions> {
     // Create control agent if not already provided
     if (!options.controlAgent) {
       globalControlAgent = createControlAgent({
-        serverUrl: options.serverUrl ?? DEFAULT_CONTROL_SERVER,
+        serverUrl: getControlServerUrl(options.serverUrl),
         apiKey,
         failOpen: options.failOpen ?? true,
       });

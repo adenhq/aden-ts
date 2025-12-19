@@ -13,7 +13,10 @@ import type {
   MeterOptions,
   NormalizedUsage,
   ToolCallMetric,
+  BeforeRequestContext,
+  BeforeRequestResult,
 } from "./types.js";
+import { RequestCancelledError } from "./types.js";
 
 /**
  * Safely emit a metric event, handling cases where emitMetric might be undefined
@@ -273,6 +276,60 @@ function createMeteredStream<T extends AsyncIterable<unknown>>(
 }
 
 /**
+ * Sleep helper for throttling
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Execute beforeRequest hook and handle actions
+ * Returns the potentially modified params (with degraded model if applicable)
+ */
+async function executeBeforeRequestHook(
+  params: Record<string, unknown>,
+  spanId: string,
+  meterOptions: MeterOptions
+): Promise<Record<string, unknown>> {
+  if (!meterOptions.beforeRequest) {
+    return params;
+  }
+
+  const context: BeforeRequestContext = {
+    model: params.model as string,
+    stream: !!params.stream,
+    spanId,
+    traceId: spanId,
+    timestamp: new Date(),
+    metadata: meterOptions.requestMetadata,
+  };
+
+  const result: BeforeRequestResult = await meterOptions.beforeRequest(params, context);
+
+  if (result.action === "cancel") {
+    throw new RequestCancelledError(result.reason, context);
+  }
+
+  if (result.action === "throttle") {
+    await sleep(result.delayMs);
+    return params;
+  }
+
+  if (result.action === "degrade") {
+    // Return modified params with degraded model
+    return { ...params, model: result.toModel };
+  }
+
+  if (result.action === "alert") {
+    // Alerts allow the request to proceed - the alert was already triggered
+    return params;
+  }
+
+  // action === "proceed" - continue normally
+  return params;
+}
+
+/**
  * Create wrapper for create methods
  */
 function wrapCreateMethod(
@@ -289,11 +346,14 @@ function wrapCreateMethod(
     const t0 = Date.now();
 
     try {
-      const result = await originalFn.call(this, params, ...rest);
+      // Execute beforeRequest hook (may throttle, cancel, or degrade)
+      const finalParams = await executeBeforeRequestHook(params, spanId, meterOptions);
+
+      const result = await originalFn.call(this, finalParams, ...rest);
 
       // Handle streaming
       if (
-        params.stream &&
+        finalParams.stream &&
         result &&
         typeof result === "object" &&
         Symbol.asyncIterator in result
@@ -301,7 +361,7 @@ function wrapCreateMethod(
         return createMeteredStream(
           result as AsyncIterable<unknown>,
           spanId,
-          params,
+          finalParams,
           t0,
           meterOptions
         );
@@ -311,7 +371,7 @@ function wrapCreateMethod(
       const usage = normalizeUsage((result as Record<string, unknown>)?.usage);
       const toolCalls = meterOptions.trackToolCalls !== false ? extractToolCalls(result) : undefined;
       const event = buildFlatEvent(
-        spanId, params, false, Date.now() - t0, usage,
+        spanId, finalParams, false, Date.now() - t0, usage,
         extractRequestId(result), meterOptions, toolCalls
       );
 

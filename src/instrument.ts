@@ -9,7 +9,7 @@ import { instrumentOpenAI, uninstrumentOpenAI, isOpenAIInstrumented } from "./in
 import { instrumentGemini, uninstrumentGemini, isGeminiInstrumented } from "./instrument-gemini.js";
 import { instrumentAnthropic, uninstrumentAnthropic, isAnthropicInstrumented } from "./instrument-anthropic.js";
 import { createControlAgent, createControlAgentEmitter } from "./control-agent.js";
-import { DEFAULT_CONTROL_SERVER, type MeterOptions } from "./types.js";
+import { getControlServerUrl, type MeterOptions, type BeforeRequestHook, type BeforeRequestContext } from "./types.js";
 import type { IControlAgent } from "./control-types.js";
 
 /**
@@ -27,6 +27,71 @@ let globalOptions: MeterOptions | null = null;
 let globalControlAgent: IControlAgent | null = null;
 
 /**
+ * Creates a beforeRequest hook that integrates with the control agent
+ * to enforce budget limits, throttling, and model degradation
+ */
+function createControlBeforeRequestHook(
+  controlAgent: IControlAgent,
+  getContextId?: () => string | undefined,
+  userHook?: BeforeRequestHook
+): BeforeRequestHook {
+  return async (params: Record<string, unknown>, context: BeforeRequestContext) => {
+    // First, call user's hook if provided
+    if (userHook) {
+      const userResult = await userHook(params, context);
+      if (userResult.action === "cancel") {
+        return userResult;
+      }
+      if (userResult.action === "throttle") {
+        // Apply user's throttle, but continue to check control agent
+        await new Promise((r) => setTimeout(r, userResult.delayMs));
+      }
+      if (userResult.action === "degrade") {
+        // User's degrade takes precedence
+        return userResult;
+      }
+    }
+
+    // Get decision from control agent
+    const contextId = getContextId?.();
+    const decision = await controlAgent.getDecision({
+      context_id: contextId,
+      provider: "openai", // TODO: detect provider from SDK
+      model: params.model as string,
+      // Don't estimate cost - let the decision be based on current spend only
+      // The server will calculate actual cost after the request
+    });
+
+    // Map control decision to beforeRequest result
+    switch (decision.action) {
+      case "block":
+        return { action: "cancel", reason: decision.reason || "Budget exceeded" };
+
+      case "throttle":
+        console.log(`[aden] Request throttled: ${decision.reason}`);
+        return { action: "throttle", delayMs: decision.throttleDelayMs || 1000 };
+
+      case "degrade":
+        console.log(`[aden] Model degraded: ${params.model} → ${decision.degradeToModel} (${decision.reason})`);
+        return { action: "degrade", toModel: decision.degradeToModel!, reason: decision.reason };
+
+      case "alert":
+        // Alerts allow the request to proceed but log the alert
+        console.log(`[aden] Alert [${decision.alertLevel}]: ${decision.reason}`);
+        return {
+          action: "alert",
+          level: decision.alertLevel || "warning",
+          message: decision.reason || "Alert triggered",
+        };
+
+      case "allow":
+      default:
+        return { action: "proceed" };
+    }
+  };
+}
+
+/**
  * Resolve options by setting up control agent when apiKey is provided
  */
 async function resolveOptions(options: MeterOptions): Promise<MeterOptions> {
@@ -37,9 +102,11 @@ async function resolveOptions(options: MeterOptions): Promise<MeterOptions> {
     // Create control agent if not already provided
     if (!options.controlAgent) {
       globalControlAgent = createControlAgent({
-        serverUrl: options.serverUrl ?? DEFAULT_CONTROL_SERVER,
+        serverUrl: getControlServerUrl(options.serverUrl),
         apiKey,
         failOpen: options.failOpen ?? true,
+        getContextId: options.getContextId,
+        onAlert: options.onAlert,
       });
 
       // Connect the control agent
@@ -61,9 +128,17 @@ async function resolveOptions(options: MeterOptions): Promise<MeterOptions> {
         }
       : controlEmitter;
 
+    // Create beforeRequest hook that checks with control agent
+    const beforeRequest = createControlBeforeRequestHook(
+      globalControlAgent,
+      options.getContextId,
+      options.beforeRequest
+    );
+
     return {
       ...options,
       emitMetric,
+      beforeRequest,
       controlAgent: globalControlAgent,
     };
   }

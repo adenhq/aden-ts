@@ -182,15 +182,16 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Executes the beforeRequest hook if provided, handling throttle and cancel actions
+ * Executes the beforeRequest hook if provided, handling throttle, cancel, and degrade actions
+ * Returns the potentially modified params (with degraded model if applicable)
  */
 async function executeBeforeRequestHook(
   params: Record<string, unknown>,
   context: BeforeRequestContext,
   meterOptions: MeterOptions
-): Promise<void> {
+): Promise<Record<string, unknown>> {
   if (!meterOptions.beforeRequest) {
-    return;
+    return params;
   }
 
   const result: BeforeRequestResult = await meterOptions.beforeRequest(
@@ -204,9 +205,21 @@ async function executeBeforeRequestHook(
 
   if (result.action === "throttle") {
     await sleep(result.delayMs);
+    return params;
+  }
+
+  if (result.action === "degrade") {
+    // Return modified params with degraded model
+    return { ...params, model: result.toModel };
+  }
+
+  if (result.action === "alert") {
+    // Alerts allow the request to proceed - the alert was already triggered
+    return params;
   }
 
   // action === "proceed" - continue normally
+  return params;
 }
 
 /**
@@ -240,18 +253,18 @@ async function meterNonStreamingCall<T>(
   const spanId = meterOptions.generateSpanId?.() ?? randomUUID();
   const t0 = Date.now();
 
-  // Execute beforeRequest hook (may throttle or cancel)
+  // Execute beforeRequest hook (may throttle, cancel, or degrade)
   // Note: traceId will be determined by context, use spanId as fallback
   const beforeCtx = buildBeforeRequestContext(params, spanId, spanId, meterOptions);
-  await executeBeforeRequestHook(params, beforeCtx, meterOptions);
+  const finalParams = await executeBeforeRequestHook(params, beforeCtx, meterOptions);
 
   try {
-    const res = await originalFn(params, ...options);
+    const res = await originalFn(finalParams, ...options);
     const usage = normalizeUsage((res as Record<string, unknown>)?.usage);
     const toolCalls = meterOptions.trackToolCalls !== false ? extractToolCalls(res) : undefined;
 
     const event = buildFlatEvent(
-      spanId, params, false, Date.now() - t0, usage,
+      spanId, finalParams, false, Date.now() - t0, usage,
       extractRequestId(res), meterOptions, toolCalls
     );
     await safeEmit(meterOptions, event);
@@ -380,12 +393,12 @@ async function meterStreamingCall<T>(
   const spanId = meterOptions.generateSpanId?.() ?? randomUUID();
   const t0 = Date.now();
 
-  // Execute beforeRequest hook (may throttle or cancel)
+  // Execute beforeRequest hook (may throttle, cancel, or degrade)
   const beforeCtx = buildBeforeRequestContext(params, spanId, spanId, meterOptions);
-  await executeBeforeRequestHook(params, beforeCtx, meterOptions);
+  const finalParams = await executeBeforeRequestHook(params, beforeCtx, meterOptions);
 
   try {
-    const stream = await originalFn(params, ...options);
+    const stream = await originalFn(finalParams, ...options);
 
     // Check if result is async iterable (streaming response)
     if (
@@ -396,7 +409,7 @@ async function meterStreamingCall<T>(
       return createMeteredStream(
         stream as AsyncIterable<unknown> & T,
         spanId,
-        params,
+        finalParams,
         t0,
         meterOptions
       );
@@ -406,7 +419,7 @@ async function meterStreamingCall<T>(
     return stream;
   } catch (error) {
     const event = buildFlatEvent(
-      spanId, params, true, Date.now() - t0, null, null, meterOptions, undefined,
+      spanId, finalParams, true, Date.now() - t0, null, null, meterOptions, undefined,
       error instanceof Error ? error.message : String(error)
     );
     await safeEmit(meterOptions, event);

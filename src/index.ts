@@ -138,7 +138,7 @@ export type {
 export { RequestCancelledError } from "./types.js";
 
 // Constants
-export { DEFAULT_CONTROL_SERVER } from "./types.js";
+export { DEFAULT_CONTROL_SERVER, getControlServerUrl } from "./types.js";
 
 // Control Agent (bidirectional server communication)
 export {
@@ -158,5 +158,7 @@ export type {
   ThrottleRule,
   BlockRule,
   DegradeRule,
+  AlertRule,
+  AlertEvent,
   HeartbeatEvent,
 } from "./control-types.js";

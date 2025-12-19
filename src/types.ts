@@ -198,7 +198,9 @@ export interface BeforeRequestContext {
 export type BeforeRequestResult =
   | { action: "proceed" }
   | { action: "throttle"; delayMs: number }
-  | { action: "cancel"; reason: string };
+  | { action: "cancel"; reason: string }
+  | { action: "degrade"; toModel: string; reason?: string }
+  | { action: "alert"; level: "info" | "warning" | "critical"; message: string };
 
 /**
  * Hook called before each API request, allowing user-defined rate limiting
@@ -260,6 +262,16 @@ export interface SDKClasses {
  */
 export const DEFAULT_CONTROL_SERVER = "https://kube.acho.io";
 
+/**
+ * Get the control server URL with priority:
+ * 1. Explicit serverUrl option
+ * 2. ADEN_API_URL environment variable
+ * 3. DEFAULT_CONTROL_SERVER constant
+ */
+export function getControlServerUrl(serverUrl?: string): string {
+  return serverUrl ?? process.env.ADEN_API_URL ?? DEFAULT_CONTROL_SERVER;
+}
+
 export interface MeterOptions {
   /**
    * API key for the control server.
@@ -280,7 +292,8 @@ export interface MeterOptions {
   apiKey?: string;
 
   /**
-   * Control server URL. Defaults to https://kube.acho.io
+   * Control server URL.
+   * Priority: serverUrl option > ADEN_API_URL env var > https://kube.acho.io
    * Only used when apiKey is provided.
    */
   serverUrl?: string;
@@ -344,11 +357,41 @@ export interface MeterOptions {
    */
   sdks?: SDKClasses;
   /**
+   * Function to get the current context ID (user ID, session ID, etc.)
+   * Used for budget tracking and policy enforcement per context.
+   *
+   * @example
+   * ```typescript
+   * instrument({
+   *   apiKey: process.env.ADEN_API_KEY,
+   *   getContextId: () => getCurrentUserId(),
+   * });
+   * ```
+   */
+  getContextId?: () => string | undefined;
+  /**
    * Pre-configured control agent instance.
    * Use this for advanced control agent configuration.
    * When apiKey is provided, a control agent is created automatically.
    */
   controlAgent?: IControlAgent;
+  /**
+   * Callback invoked when an alert is triggered by the control agent.
+   * Alerts do NOT block requests - they are notifications only.
+   * Use this for logging, notifications, or monitoring.
+   *
+   * @example
+   * ```typescript
+   * instrument({
+   *   apiKey: process.env.ADEN_API_KEY,
+   *   onAlert: (alert) => {
+   *     console.warn(`[${alert.level}] ${alert.message}`);
+   *     // Send to Slack, PagerDuty, etc.
+   *   },
+   * });
+   * ```
+   */
+  onAlert?: (alert: { level: "info" | "warning" | "critical"; message: string; reason: string; contextId?: string; provider: string; model: string; timestamp: Date }) => void | Promise<void>;
 }
 
 /**

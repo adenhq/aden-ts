@@ -7,7 +7,8 @@
 
 import { randomUUID } from "crypto";
 import { getCallRelationship, getFullAgentStack } from "./context.js";
-import type { MetricEvent, MeterOptions } from "./types.js";
+import type { MetricEvent, MeterOptions, BeforeRequestContext, BeforeRequestResult } from "./types.js";
+import { RequestCancelledError } from "./types.js";
 
 /**
  * Safely emit a metric event, handling cases where emitMetric might be undefined
@@ -117,6 +118,52 @@ function buildFlatEvent(
 }
 
 /**
+ * Sleep helper for throttling
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Execute beforeRequest hook and handle actions
+ */
+async function executeBeforeRequestHook(
+  modelName: string,
+  spanId: string,
+  meterOptions: MeterOptions
+): Promise<void> {
+  if (!meterOptions.beforeRequest) {
+    return;
+  }
+
+  const context: BeforeRequestContext = {
+    model: modelName,
+    stream: false,
+    spanId,
+    traceId: spanId,
+    timestamp: new Date(),
+    metadata: meterOptions.requestMetadata,
+  };
+
+  // For Gemini, we pass an empty params object since the model is not in params
+  const result: BeforeRequestResult = await meterOptions.beforeRequest({ model: modelName }, context);
+
+  if (result.action === "cancel") {
+    throw new RequestCancelledError(result.reason, context);
+  }
+
+  if (result.action === "throttle") {
+    await sleep(result.delayMs);
+  }
+
+  // Note: "degrade" action is not directly applicable for Gemini since
+  // the model is set on the GenerativeModel instance, not per-request
+
+  // "alert" action allows request to proceed - the alert was already triggered
+  // (handled by not throwing or returning early)
+}
+
+/**
  * Create wrapper for generateContent method
  */
 function wrapGenerateContent(
@@ -130,10 +177,14 @@ function wrapGenerateContent(
   ): Promise<unknown> {
     const options = getOptions();
     const model = getModel();
+    const modelName = extractModelName(model);
     const spanId = options.generateSpanId?.() ?? randomUUID();
     const t0 = Date.now();
 
     try {
+      // Execute beforeRequest hook (may throttle or cancel)
+      await executeBeforeRequestHook(modelName, spanId, options);
+
       const result = await originalFn.apply(this, args);
 
       // Extract usage from response
@@ -176,10 +227,14 @@ function wrapGenerateContentStream(
   ): Promise<unknown> {
     const options = getOptions();
     const model = getModel();
+    const modelName = extractModelName(model);
     const spanId = options.generateSpanId?.() ?? randomUUID();
     const t0 = Date.now();
 
     try {
+      // Execute beforeRequest hook (may throttle or cancel)
+      await executeBeforeRequestHook(modelName, spanId, options);
+
       const streamResult = await originalFn.apply(this, args);
       const result = streamResult as Record<string, unknown>;
 
