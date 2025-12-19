@@ -67,7 +67,7 @@ const AGENT_PATTERNS = [
 const SKIP_PATTERNS = [
   /node_modules/,
   /node:internal/,
-  /llm-meter\/dist/,
+  /aden\/dist/,
   /openai-meter/,
   /dist\/index\.(m?js|cjs)/,
   /<anonymous>/,
@@ -130,7 +130,7 @@ const DEFAULT_MAX_STACK_FRAMES = 10;
  */
 const STACK_SKIP_PATTERNS = [
   /node:internal/,
-  /llm-meter\/dist/,
+  /aden\/dist/,
   /openai-meter/,
   /dist\/index\.(m?js|cjs)/,
   /<anonymous>/,

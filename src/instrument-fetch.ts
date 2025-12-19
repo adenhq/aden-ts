@@ -6,13 +6,80 @@
  */
 
 import { randomUUID } from "crypto";
-import { getCallRelationship, getFullAgentStack } from "./context.js";
-import type { MetricEvent, MeterOptions } from "./types.js";
+import { getCallRelationship, getFullAgentStack, getCurrentContext } from "./context.js";
+import { DEFAULT_CONTROL_SERVER, type MetricEvent, type MeterOptions } from "./types.js";
+import type { ControlDecision, IControlAgent } from "./control-types.js";
+import { createControlAgent, createControlAgentEmitter } from "./control-agent.js";
+
+/**
+ * Safely emit a metric event, handling cases where emitMetric might be undefined
+ */
+async function safeEmit(options: MeterOptions, event: MetricEvent): Promise<void> {
+  if (options.emitMetric) {
+    await options.emitMetric(event);
+  }
+}
 
 // Track if we've already instrumented
 let isInstrumented = false;
 let globalOptions: MeterOptions | null = null;
 let originalFetch: typeof fetch | null = null;
+let globalControlAgent: IControlAgent | null = null;
+
+/**
+ * Resolve options by setting up control agent when apiKey is provided
+ */
+async function resolveOptions(options: MeterOptions): Promise<MeterOptions> {
+  // Check for API key (explicit or from environment)
+  const apiKey = options.apiKey ?? process.env.ADEN_API_KEY;
+
+  if (apiKey) {
+    // Create control agent if not already provided
+    if (!options.controlAgent) {
+      globalControlAgent = createControlAgent({
+        serverUrl: options.serverUrl ?? DEFAULT_CONTROL_SERVER,
+        apiKey,
+        failOpen: options.failOpen ?? true,
+      });
+
+      // Connect the control agent
+      await globalControlAgent.connect();
+    } else {
+      globalControlAgent = options.controlAgent;
+    }
+
+    // Create emitter that sends to control agent
+    const controlEmitter = createControlAgentEmitter(globalControlAgent);
+
+    // If user also provided emitMetric, combine them
+    const emitMetric: MeterOptions["emitMetric"] = options.emitMetric
+      ? async (event) => {
+          await Promise.all([
+            options.emitMetric!(event),
+            controlEmitter(event),
+          ]);
+        }
+      : controlEmitter;
+
+    return {
+      ...options,
+      emitMetric,
+      controlAgent: globalControlAgent,
+    };
+  }
+
+  // No API key - require emitMetric
+  if (!options.emitMetric) {
+    throw new Error(
+      "aden: Either apiKey or emitMetric is required.\n" +
+      "  Option 1: Set ADEN_API_KEY environment variable\n" +
+      "  Option 2: Pass apiKey in options\n" +
+      "  Option 3: Pass emitMetric for custom handling"
+    );
+  }
+
+  return options;
+}
 
 type Provider = "openai" | "anthropic" | "gemini";
 
@@ -97,6 +164,62 @@ function extractUsage(provider: string, responseBody: unknown): {
 }
 
 /**
+ * Sleep helper for throttling
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Get control decision from agent if available
+ */
+async function getControlDecision(
+  options: MeterOptions,
+  provider: Provider,
+  model: string,
+  spanId: string
+): Promise<{ decision: ControlDecision; originalModel: string }> {
+  const originalModel = model;
+
+  if (!options.controlAgent) {
+    return { decision: { action: "allow" }, originalModel };
+  }
+
+  const ctx = getCurrentContext();
+  const decision = await options.controlAgent.getDecision({
+    context_id: ctx.traceId,
+    provider,
+    model,
+    metadata: options.requestMetadata,
+  });
+
+  // Report control event
+  await options.controlAgent.reportControlEvent({
+    trace_id: ctx.traceId,
+    span_id: spanId,
+    context_id: ctx.traceId,
+    provider,
+    original_model: originalModel,
+    action: decision.action,
+    reason: decision.reason,
+    degraded_to: decision.degradeToModel,
+    throttle_delay_ms: decision.throttleDelayMs,
+  });
+
+  return { decision, originalModel };
+}
+
+/**
+ * Apply model degradation to request body
+ */
+function applyModelDegradation(body: unknown, newModel: string): unknown {
+  if (body && typeof body === "object") {
+    return { ...body as Record<string, unknown>, model: newModel };
+  }
+  return body;
+}
+
+/**
  * Build a metric event from fetch request/response
  */
 function buildMetricEvent(
@@ -153,17 +276,21 @@ function buildMetricEvent(
  */
 export async function instrumentFetch(options: MeterOptions): Promise<boolean> {
   if (isInstrumented) {
-    console.warn("[llm-meter] Fetch already instrumented.");
+    console.warn("[aden] Fetch already instrumented.");
     return true;
   }
 
   if (typeof globalThis.fetch !== "function") {
-    console.warn("[llm-meter] No global fetch available.");
+    console.warn("[aden] No global fetch available.");
     return false;
   }
 
-  globalOptions = options;
+  // Resolve options (create control agent if apiKey provided)
+  globalOptions = await resolveOptions(options);
   originalFetch = globalThis.fetch;
+
+  const controlStatus = globalControlAgent ? " + control agent" : "";
+  console.log(`[aden] Instrumented: fetch${controlStatus}`);
 
   globalThis.fetch = async function instrumentedFetch(
     input: string | URL | Request,
@@ -192,14 +319,69 @@ export async function instrumentFetch(options: MeterOptions): Promise<boolean> {
     }
 
     const isStream = (requestBody as Record<string, unknown>)?.stream === true;
+    let model = extractModel(provider, url, requestBody, null);
 
     // Capture call relationship BEFORE the fetch (preserves call stack)
     const relationship = globalOptions?.trackCallRelationships !== false
       ? getCallRelationship(spanId)
       : null;
 
+    // Get control decision if control agent is configured
+    const { decision } = await getControlDecision(
+      globalOptions!,
+      provider,
+      model,
+      spanId
+    );
+
+    // Apply control decision
+    let modifiedInit = init;
+    switch (decision.action) {
+      case "block":
+        // Create a blocked error event
+        const blockedEvent = buildMetricEvent(
+          spanId,
+          provider,
+          model,
+          isStream,
+          0,
+          { input: 0, output: 0, cached: 0, reasoning: 0 },
+          globalOptions!,
+          relationship,
+          `Blocked: ${decision.reason ?? "Policy violation"}`
+        );
+        await safeEmit(globalOptions!, blockedEvent);
+
+        // Also report to control agent
+        if (globalOptions?.controlAgent) {
+          await globalOptions.controlAgent.reportMetric(blockedEvent);
+        }
+
+        throw new Error(`Request blocked: ${decision.reason ?? "Policy violation"}`);
+
+      case "throttle":
+        if (decision.throttleDelayMs) {
+          await sleep(decision.throttleDelayMs);
+        }
+        break;
+
+      case "degrade":
+        if (decision.degradeToModel) {
+          model = decision.degradeToModel;
+          requestBody = applyModelDegradation(requestBody, decision.degradeToModel);
+          // Update the request init with new body
+          if (init?.body) {
+            modifiedInit = {
+              ...init,
+              body: JSON.stringify(requestBody),
+            };
+          }
+        }
+        break;
+    }
+
     try {
-      const response = await originalFetch!(input, init);
+      const response = await originalFetch!(input, modifiedInit);
 
       // Clone response to read body without consuming it
       const clonedResponse = response.clone();
@@ -222,7 +404,7 @@ export async function instrumentFetch(options: MeterOptions): Promise<boolean> {
             relationship
           );
 
-          await globalOptions!.emitMetric(event);
+          await safeEmit(globalOptions!, event);
         } catch {
           // Failed to parse response, still emit basic metric
           const model = extractModel(provider, url, requestBody, null);
@@ -236,7 +418,7 @@ export async function instrumentFetch(options: MeterOptions): Promise<boolean> {
             globalOptions!,
             relationship
           );
-          await globalOptions!.emitMetric(event);
+          await safeEmit(globalOptions!, event);
         }
       } else if (isStream && response.ok && response.body) {
         // For streaming, wrap the body to capture when stream ends
@@ -281,7 +463,7 @@ export async function instrumentFetch(options: MeterOptions): Promise<boolean> {
               globalOptions!,
               relationship
             );
-            await globalOptions!.emitMetric(event);
+            await safeEmit(globalOptions!, event);
           },
         });
 
@@ -305,7 +487,7 @@ export async function instrumentFetch(options: MeterOptions): Promise<boolean> {
           relationship,
           `HTTP ${response.status}: ${response.statusText}`
         );
-        await globalOptions!.emitMetric(event);
+        await safeEmit(globalOptions!, event);
       }
 
       return response;
@@ -322,7 +504,7 @@ export async function instrumentFetch(options: MeterOptions): Promise<boolean> {
         relationship,
         error instanceof Error ? error.message : String(error)
       );
-      await globalOptions!.emitMetric(event);
+      await safeEmit(globalOptions!, event);
       throw error;
     }
   };
@@ -334,9 +516,15 @@ export async function instrumentFetch(options: MeterOptions): Promise<boolean> {
 /**
  * Remove fetch instrumentation
  */
-export function uninstrumentFetch(): void {
+export async function uninstrumentFetch(): Promise<void> {
   if (!isInstrumented || !originalFetch) {
     return;
+  }
+
+  // Disconnect control agent if connected
+  if (globalControlAgent) {
+    await globalControlAgent.disconnect();
+    globalControlAgent = null;
   }
 
   globalThis.fetch = originalFetch;

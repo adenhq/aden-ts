@@ -1,7 +1,7 @@
 /**
  * LangChain Example
  *
- * Tests llm-meter with LangChain.js
+ * Tests Aden with LangChain.js
  * Works with ChatOpenAI, ChatAnthropic, ChatGoogleGenerativeAI
  */
 

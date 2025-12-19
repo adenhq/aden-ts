@@ -14,6 +14,15 @@ import type {
   ToolCallMetric,
 } from "./types.js";
 
+/**
+ * Safely emit a metric event, handling cases where emitMetric might be undefined
+ */
+async function safeEmit(options: MeterOptions, event: MetricEvent): Promise<void> {
+  if (options.emitMetric) {
+    await options.emitMetric(event);
+  }
+}
+
 // Track if we've already instrumented
 let isInstrumented = false;
 let globalOptions: MeterOptions | null = null;
@@ -210,7 +219,7 @@ function createMeteredStream<T extends AsyncIterable<unknown>>(
           spanId, params, true, Date.now() - t0, finalUsage,
           requestId, meterOptions, toolCalls.length > 0 ? toolCalls : undefined
         );
-        await meterOptions.emitMetric(metricEvent);
+        await safeEmit(meterOptions, metricEvent);
       }
 
       return result;
@@ -220,7 +229,7 @@ function createMeteredStream<T extends AsyncIterable<unknown>>(
         spanId, params, true, Date.now() - t0, finalUsage,
         requestId, meterOptions, toolCalls.length > 0 ? toolCalls : undefined
       );
-      await meterOptions.emitMetric(metricEvent);
+      await safeEmit(meterOptions, metricEvent);
 
       if (originalIterator.return) {
         return originalIterator.return(value);
@@ -232,7 +241,7 @@ function createMeteredStream<T extends AsyncIterable<unknown>>(
         spanId, params, true, Date.now() - t0, null, requestId, meterOptions, undefined,
         error instanceof Error ? error.message : String(error)
       );
-      await meterOptions.emitMetric(metricEvent);
+      await safeEmit(meterOptions, metricEvent);
 
       if (originalIterator.throw) {
         return originalIterator.throw(error);
@@ -293,7 +302,7 @@ function wrapMessagesCreate(
         extractRequestId(result), meterOptions, toolCalls
       );
 
-      await meterOptions.emitMetric(event);
+      await safeEmit(meterOptions, event);
       return result;
     } catch (error) {
       const event = buildFlatEvent(
@@ -301,7 +310,7 @@ function wrapMessagesCreate(
         error instanceof Error ? error.message : String(error)
       );
 
-      await meterOptions.emitMetric(event);
+      await safeEmit(meterOptions, event);
       throw error;
     }
   };
@@ -318,7 +327,7 @@ function wrapMessagesCreate(
 export async function instrumentAnthropic(options: MeterOptions): Promise<boolean> {
   if (isInstrumented) {
     console.warn(
-      "[llm-meter] Anthropic already instrumented. Call uninstrumentAnthropic() first to re-instrument."
+      "[aden] Anthropic already instrumented. Call uninstrumentAnthropic() first to re-instrument."
     );
     return true;
   }

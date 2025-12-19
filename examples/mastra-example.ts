@@ -1,7 +1,7 @@
 /**
  * Mastra Agent Framework Example
  *
- * Tests llm-meter with Mastra agent framework
+ * Tests Aden with Mastra agent framework
  * Works with agents, tools, and workflows
  */
 
@@ -52,7 +52,7 @@ async function testBasicAgent() {
     model: openai("gpt-4o-mini"),
   });
 
-  // Use llm-meter's withAgent to track agent context
+  // Use Aden's withAgent to track agent context
   const response = await withAgent("AssistantAgent", async () => {
     return agent.generate("What is TypeScript in one sentence?");
   });

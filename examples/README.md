@@ -1,4 +1,4 @@
-# llm-meter Examples
+# Aden Examples
 
 Test matrix covering vendor SDKs and popular AI agent frameworks.
 
@@ -82,9 +82,9 @@ npx tsx examples/multi-agent-example.ts
 - Debate workflow (Pro vs Con with Judge)
 - Iterative refinement
 
-## What llm-meter Captures
+## What Aden Captures
 
-Each example demonstrates llm-meter capturing:
+Each example demonstrates Aden capturing:
 
 ```
 ✓ [a1b2c3d4] openai gpt-4o-mini (stream) 1234ms

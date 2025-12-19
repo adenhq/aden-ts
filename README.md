@@ -1,6 +1,6 @@
-# llm-meter
+# Aden
 
-Lightweight metering and observability for LLM SDKs (OpenAI, Gemini, Anthropic). Track usage metrics, billing data, and implement budget guardrails without modifying your existing code.
+Aden Control Plane - Real-time cost control and observability for LLM SDKs (OpenAI, Gemini, Anthropic). Track usage metrics, enforce budgets, and implement control policies without modifying your existing code.
 
 ## Features
 
@@ -16,7 +16,7 @@ Lightweight metering and observability for LLM SDKs (OpenAI, Gemini, Anthropic).
 ## Installation
 
 ```bash
-npm install llm-meter
+npm install aden
 ```
 
 Optional peer dependencies (install the ones you use):
@@ -29,7 +29,7 @@ npm install @anthropic-ai/sdk       # For Anthropic/Claude
 ## Quick Start
 
 ```typescript
-import { instrument, createConsoleEmitter } from "llm-meter";
+import { instrument, createConsoleEmitter } from "aden";
 
 // Call once at startup - all available LLM clients are now metered
 const result = instrument({
@@ -55,7 +55,7 @@ await model.generateContent("Hello!");
 If you need different options per client, use `makeMeteredOpenAI`:
 
 ```typescript
-import { makeMeteredOpenAI } from "llm-meter";
+import { makeMeteredOpenAI } from "aden";
 
 const client = new OpenAI();
 const metered = makeMeteredOpenAI(client, {
@@ -86,7 +86,7 @@ Every API call emits a `MetricEvent` with:
 Prevent runaway costs with pre-flight token counting:
 
 ```typescript
-import { withBudgetGuardrails } from "llm-meter";
+import { withBudgetGuardrails } from "aden";
 
 const budgeted = withBudgetGuardrails(metered, {
   maxInputTokens: 4000,
@@ -105,7 +105,7 @@ await budgeted.responses.create({
 Send metrics to your backend:
 
 ```typescript
-import { makeMeteredOpenAI, createBatchEmitter } from "llm-meter";
+import { makeMeteredOpenAI, createBatchEmitter } from "aden";
 
 const batchEmitter = createBatchEmitter(
   async (events) => {
@@ -161,7 +161,7 @@ Send metrics to a central API endpoint for storage and aggregation. This is the 
 ### Basic Usage
 
 ```typescript
-import { makeMeteredOpenAI, createHttpTransport } from "llm-meter";
+import { makeMeteredOpenAI, createHttpTransport } from "aden";
 
 const transport = createHttpTransport({
   apiUrl: "https://api.example.com/v1/metrics",
@@ -275,7 +275,7 @@ Automatically track relationships between LLM calls using AsyncLocalStorage. Rel
 The simplest approach - related calls are automatically grouped:
 
 ```typescript
-import { makeMeteredOpenAI, createConsoleEmitter } from "llm-meter";
+import { makeMeteredOpenAI, createConsoleEmitter } from "aden";
 
 const metered = makeMeteredOpenAI(client, {
   emitMetric: createConsoleEmitter({ pretty: true }),
@@ -295,7 +295,7 @@ await metered.responses.create({ model: "gpt-4.1", input: "Follow up" });
 For request handlers where you want isolated sessions with custom metadata:
 
 ```typescript
-import { enterMeterContext } from "llm-meter";
+import { enterMeterContext } from "aden";
 
 app.post("/chat", async (req, res) => {
   // Create a new session for this request
@@ -320,7 +320,7 @@ app.post("/chat", async (req, res) => {
 Use `withMeterContext` for explicit session boundaries:
 
 ```typescript
-import { withMeterContextAsync } from "llm-meter";
+import { withMeterContextAsync } from "aden";
 
 // All calls inside share a session, isolated from outside
 const result = await withMeterContextAsync(async () => {
@@ -335,7 +335,7 @@ const result = await withMeterContextAsync(async () => {
 Track nested agent hierarchies for multi-agent systems:
 
 ```typescript
-import { withAgent, pushAgent, popAgent } from "llm-meter";
+import { withAgent, pushAgent, popAgent } from "aden";
 
 // Option A: Using withAgent wrapper
 async function researchAgent() {
@@ -394,7 +394,7 @@ Detected patterns: `*Agent`, `*Handler`, `*Service`, `*Controller`, `handle*`, `
 Attach and retrieve metadata from the current context:
 
 ```typescript
-import { setContextMetadata, getContextMetadata, getCurrentContext } from "llm-meter";
+import { setContextMetadata, getContextMetadata, getCurrentContext } from "aden";
 
 // Set metadata
 setContextMetadata("userId", "user-123");
@@ -427,7 +427,7 @@ import {
   enterMeterContext,
   withAgent,
   createBatchEmitter,
-} from "llm-meter";
+} from "aden";
 
 const metered = makeMeteredOpenAI(client, {
   emitMetric: createBatchEmitter(async (events) => {
@@ -474,7 +474,7 @@ app.post("/agent/run", async (req, res) => {
 **Recommended.** Instrument OpenAI globally. Call once at startup.
 
 ```typescript
-import { instrument, createHttpTransport } from "llm-meter";
+import { instrument, createHttpTransport } from "aden";
 
 instrument({
   emitMetric: createHttpTransport({ apiUrl: process.env.METER_API_URL }).emit,
@@ -489,7 +489,7 @@ const client = new OpenAI();
 Remove global instrumentation. Restores original behavior.
 
 ```typescript
-import { uninstrument } from "llm-meter";
+import { uninstrument } from "aden";
 
 uninstrument(); // Metrics no longer collected
 ```
@@ -499,7 +499,7 @@ uninstrument(); // Metrics no longer collected
 Update options at runtime without re-instrumenting.
 
 ```typescript
-import { updateInstrumentationOptions } from "llm-meter";
+import { updateInstrumentationOptions } from "aden";
 
 // Change emitter at runtime
 updateInstrumentationOptions({

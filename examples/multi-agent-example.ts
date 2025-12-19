@@ -1,7 +1,7 @@
 /**
  * Multi-Agent Pattern Example
  *
- * Demonstrates how llm-meter tracks multi-agent workflows
+ * Demonstrates how Aden tracks multi-agent workflows
  * Similar to CrewAI/AutoGen patterns but using direct SDK calls
  */
 

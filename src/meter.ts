@@ -14,6 +14,15 @@ import { RequestCancelledError } from "./types.js";
 import { getCallRelationship, getFullAgentStack } from "./context.js";
 
 /**
+ * Safely emit a metric event, handling cases where emitMetric might be undefined
+ */
+async function safeEmit(options: MeterOptions, event: MetricEvent): Promise<void> {
+  if (options.emitMetric) {
+    await options.emitMetric(event);
+  }
+}
+
+/**
  * Extracts request ID from various response object shapes
  */
 function extractRequestId(response: unknown): string | null {
@@ -245,14 +254,14 @@ async function meterNonStreamingCall<T>(
       spanId, params, false, Date.now() - t0, usage,
       extractRequestId(res), meterOptions, toolCalls
     );
-    await meterOptions.emitMetric(event);
+    await safeEmit(meterOptions, event);
     return res;
   } catch (error) {
     const event = buildFlatEvent(
       spanId, params, false, Date.now() - t0, null, null, meterOptions, undefined,
       error instanceof Error ? error.message : String(error)
     );
-    await meterOptions.emitMetric(event);
+    await safeEmit(meterOptions, event);
     throw error;
   }
 }
@@ -318,7 +327,7 @@ function createMeteredStream<T extends AsyncIterable<unknown>>(
           spanId, params, true, Date.now() - t0, finalUsage,
           requestId, meterOptions, toolCalls.length > 0 ? toolCalls : undefined
         );
-        await meterOptions.emitMetric(metricEvent);
+        await safeEmit(meterOptions, metricEvent);
       }
 
       return result;
@@ -329,7 +338,7 @@ function createMeteredStream<T extends AsyncIterable<unknown>>(
         spanId, params, true, Date.now() - t0, finalUsage,
         requestId, meterOptions, toolCalls.length > 0 ? toolCalls : undefined
       );
-      await meterOptions.emitMetric(metricEvent);
+      await safeEmit(meterOptions, metricEvent);
 
       if (originalIterator.return) {
         return originalIterator.return(value);
@@ -341,7 +350,7 @@ function createMeteredStream<T extends AsyncIterable<unknown>>(
         spanId, params, true, Date.now() - t0, null, requestId, meterOptions, undefined,
         error instanceof Error ? error.message : String(error)
       );
-      await meterOptions.emitMetric(metricEvent);
+      await safeEmit(meterOptions, metricEvent);
 
       if (originalIterator.throw) {
         return originalIterator.throw(error);
@@ -400,7 +409,7 @@ async function meterStreamingCall<T>(
       spanId, params, true, Date.now() - t0, null, null, meterOptions, undefined,
       error instanceof Error ? error.message : String(error)
     );
-    await meterOptions.emitMetric(event);
+    await safeEmit(meterOptions, event);
     throw error;
   }
 }

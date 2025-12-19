@@ -1,4 +1,5 @@
 import type OpenAI from "openai";
+import type { IControlAgent } from "./control-types.js";
 
 /**
  * Normalized usage metrics that work across both API response shapes
@@ -254,9 +255,59 @@ export interface SDKClasses {
   Anthropic?: any;
 }
 
+/**
+ * Default control server URL
+ */
+export const DEFAULT_CONTROL_SERVER = "https://kube.acho.io";
+
 export interface MeterOptions {
-  /** Custom metric emitter function */
-  emitMetric: MetricEmitter;
+  /**
+   * API key for the control server.
+   * When provided, automatically creates a control agent and emitter.
+   * This is the simplest way to enable metering with remote control.
+   *
+   * If not provided, checks ADEN_API_KEY environment variable.
+   *
+   * @example
+   * ```typescript
+   * // Simplest setup - just provide API key
+   * await instrument({
+   *   apiKey: process.env.ADEN_API_KEY,
+   *   sdks: { OpenAI },
+   * });
+   * ```
+   */
+  apiKey?: string;
+
+  /**
+   * Control server URL. Defaults to https://kube.acho.io
+   * Only used when apiKey is provided.
+   */
+  serverUrl?: string;
+
+  /**
+   * Whether to allow requests when control server is unreachable.
+   * Default: true (fail open - requests proceed if server is down)
+   * Set to false for strict control (fail closed - block if server unreachable)
+   */
+  failOpen?: boolean;
+
+  /**
+   * Custom metric emitter function.
+   * When apiKey is provided, this is optional - metrics go to control server.
+   * When apiKey is NOT provided, this is required.
+   *
+   * You can combine with apiKey to emit to multiple destinations:
+   * @example
+   * ```typescript
+   * await instrument({
+   *   apiKey: process.env.ADEN_API_KEY,
+   *   emitMetric: createConsoleEmitter({ pretty: true }), // Also log locally
+   * });
+   * ```
+   */
+  emitMetric?: MetricEmitter;
+
   /** Whether to include tool call metrics (default: true) */
   trackToolCalls?: boolean;
   /** Custom span ID generator (default: crypto.randomUUID) */
@@ -278,7 +329,7 @@ export interface MeterOptions {
   /**
    * SDK classes to instrument. Pass these when you have multiple copies of
    * SDK packages in your node_modules (common in monorepos or with file: dependencies).
-   * If not provided, llm-meter will try to import the SDKs from its own node_modules,
+   * If not provided, Aden will try to import the SDKs from its own node_modules,
    * which may not be the same instance your application uses.
    *
    * @example
@@ -286,12 +337,18 @@ export interface MeterOptions {
    * import { GoogleGenerativeAI } from "@google/generative-ai";
    *
    * instrument({
-   *   emitMetric: myEmitter,
+   *   apiKey: process.env.ADEN_API_KEY,
    *   sdks: { GoogleGenerativeAI },
    * });
    * ```
    */
   sdks?: SDKClasses;
+  /**
+   * Pre-configured control agent instance.
+   * Use this for advanced control agent configuration.
+   * When apiKey is provided, a control agent is created automatically.
+   */
+  controlAgent?: IControlAgent;
 }
 
 /**

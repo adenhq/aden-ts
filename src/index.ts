@@ -136,3 +136,27 @@ export type {
 
 // Error classes
 export { RequestCancelledError } from "./types.js";
+
+// Constants
+export { DEFAULT_CONTROL_SERVER } from "./types.js";
+
+// Control Agent (bidirectional server communication)
+export {
+  ControlAgent,
+  createControlAgent,
+  createControlAgentEmitter,
+} from "./control-agent.js";
+export type {
+  ControlAction,
+  ControlDecision,
+  ControlEvent,
+  ControlPolicy,
+  ControlRequest,
+  ControlAgentOptions,
+  IControlAgent,
+  BudgetRule,
+  ThrottleRule,
+  BlockRule,
+  DegradeRule,
+  HeartbeatEvent,
+} from "./control-types.js";

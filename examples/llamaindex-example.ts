@@ -1,7 +1,7 @@
 /**
  * LlamaIndex Example
  *
- * Tests llm-meter with LlamaIndex.TS
+ * Tests Aden with LlamaIndex.TS
  * Works with OpenAI, Anthropic, Gemini LLMs
  */
 

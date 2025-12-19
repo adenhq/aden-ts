@@ -9,6 +9,15 @@ import { randomUUID } from "crypto";
 import { getCallRelationship, getFullAgentStack } from "./context.js";
 import type { MetricEvent, MeterOptions } from "./types.js";
 
+/**
+ * Safely emit a metric event, handling cases where emitMetric might be undefined
+ */
+async function safeEmit(options: MeterOptions, event: MetricEvent): Promise<void> {
+  if (options.emitMetric) {
+    await options.emitMetric(event);
+  }
+}
+
 // Track if we've already instrumented
 let isInstrumented = false;
 let globalOptions: MeterOptions | null = null;
@@ -133,14 +142,14 @@ function wrapGenerateContent(
         (response?.response as Record<string, unknown>)?.usageMetadata;
 
       const event = buildFlatEvent(spanId, model, false, Date.now() - t0, usageMetadata, options);
-      await options.emitMetric(event);
+      await safeEmit(options, event);
       return result;
     } catch (error) {
       const event = buildFlatEvent(
         spanId, model, false, Date.now() - t0, null, options,
         error instanceof Error ? error.message : String(error)
       );
-      await options.emitMetric(event);
+      await safeEmit(options, event);
       throw error;
     }
   };
@@ -203,7 +212,7 @@ function wrapGenerateContentStream(
               }
 
               const event = buildFlatEvent(spanId, model, true, Date.now() - t0, usageMetadata, options);
-              await options.emitMetric(event);
+              await safeEmit(options, event);
             }
           }
         }
@@ -217,14 +226,14 @@ function wrapGenerateContentStream(
 
       // Fallback: emit metrics immediately if not a proper stream
       const event = buildFlatEvent(spanId, model, true, Date.now() - t0, null, options);
-      await options.emitMetric(event);
+      await safeEmit(options, event);
       return result;
     } catch (error) {
       const event = buildFlatEvent(
         spanId, model, true, Date.now() - t0, null, options,
         error instanceof Error ? error.message : String(error)
       );
-      await options.emitMetric(event);
+      await safeEmit(options, event);
       throw error;
     }
   };
@@ -256,14 +265,14 @@ function wrapSendMessage(
         (response?.response as Record<string, unknown>)?.usageMetadata;
 
       const event = buildFlatEvent(spanId, model, false, Date.now() - t0, usageMetadata, options);
-      await options.emitMetric(event);
+      await safeEmit(options, event);
       return result;
     } catch (error) {
       const event = buildFlatEvent(
         spanId, model, false, Date.now() - t0, null, options,
         error instanceof Error ? error.message : String(error)
       );
-      await options.emitMetric(event);
+      await safeEmit(options, event);
       throw error;
     }
   };
@@ -326,7 +335,7 @@ function wrapSendMessageStream(
               }
 
               const event = buildFlatEvent(spanId, model, true, Date.now() - t0, usageMetadata, options);
-              await options.emitMetric(event);
+              await safeEmit(options, event);
             }
           }
         }
@@ -340,14 +349,14 @@ function wrapSendMessageStream(
 
       // Fallback: emit metrics immediately
       const event = buildFlatEvent(spanId, model, true, Date.now() - t0, null, options);
-      await options.emitMetric(event);
+      await safeEmit(options, event);
       return result;
     } catch (error) {
       const event = buildFlatEvent(
         spanId, model, true, Date.now() - t0, null, options,
         error instanceof Error ? error.message : String(error)
       );
-      await options.emitMetric(event);
+      await safeEmit(options, event);
       throw error;
     }
   };
@@ -395,7 +404,7 @@ function wrapChatSession(
 export async function instrumentGemini(options: MeterOptions): Promise<boolean> {
   if (isInstrumented) {
     console.warn(
-      "[llm-meter] Gemini already instrumented. Call uninstrumentGemini() first to re-instrument."
+      "[aden] Gemini already instrumented. Call uninstrumentGemini() first to re-instrument."
     );
     return true;
   }

@@ -1,7 +1,7 @@
 /**
  * Vercel AI SDK Example
  *
- * Tests llm-meter with Vercel AI SDK (ai package)
+ * Tests Aden with Vercel AI SDK (ai package)
  * Works with generateText, streamText, generateObject
  */
 

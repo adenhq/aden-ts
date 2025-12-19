@@ -16,6 +16,15 @@ import type {
 } from "./types.js";
 
 /**
+ * Safely emit a metric event, handling cases where emitMetric might be undefined
+ */
+async function safeEmit(options: MeterOptions, event: MetricEvent): Promise<void> {
+  if (options.emitMetric) {
+    await options.emitMetric(event);
+  }
+}
+
+/**
  * Build a flat MetricEvent for OpenAI (OTel-compatible)
  */
 function buildFlatEvent(
@@ -224,7 +233,7 @@ function createMeteredStream<T extends AsyncIterable<unknown>>(
           spanId, params, true, Date.now() - t0, finalUsage,
           requestId, meterOptions, toolCalls.length > 0 ? toolCalls : undefined
         );
-        await meterOptions.emitMetric(metricEvent);
+        await safeEmit(meterOptions, metricEvent);
       }
 
       return result;
@@ -234,7 +243,7 @@ function createMeteredStream<T extends AsyncIterable<unknown>>(
         spanId, params, true, Date.now() - t0, finalUsage,
         requestId, meterOptions, toolCalls.length > 0 ? toolCalls : undefined
       );
-      await meterOptions.emitMetric(metricEvent);
+      await safeEmit(meterOptions, metricEvent);
 
       if (originalIterator.return) {
         return originalIterator.return(value);
@@ -246,7 +255,7 @@ function createMeteredStream<T extends AsyncIterable<unknown>>(
         spanId, params, true, Date.now() - t0, null, requestId, meterOptions, undefined,
         error instanceof Error ? error.message : String(error)
       );
-      await meterOptions.emitMetric(metricEvent);
+      await safeEmit(meterOptions, metricEvent);
 
       if (originalIterator.throw) {
         return originalIterator.throw(error);
@@ -306,7 +315,7 @@ function wrapCreateMethod(
         extractRequestId(result), meterOptions, toolCalls
       );
 
-      await meterOptions.emitMetric(event);
+      await safeEmit(meterOptions, event);
       return result;
     } catch (error) {
       const event = buildFlatEvent(
@@ -314,7 +323,7 @@ function wrapCreateMethod(
         error instanceof Error ? error.message : String(error)
       );
 
-      await meterOptions.emitMetric(event);
+      await safeEmit(meterOptions, event);
       throw error;
     }
   };
@@ -331,7 +340,7 @@ function wrapCreateMethod(
 export async function instrumentOpenAI(options: MeterOptions): Promise<boolean> {
   if (isInstrumented) {
     console.warn(
-      "[llm-meter] OpenAI already instrumented. Call uninstrumentOpenAI() first to re-instrument."
+      "[aden] OpenAI already instrumented. Call uninstrumentOpenAI() first to re-instrument."
     );
     return true;
   }
