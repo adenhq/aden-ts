@@ -148,3 +148,9 @@ export {
   uninstrumentAnthropic,
   isAnthropicInstrumented,
 } from "./instrument-anthropic.js";
+
+export {
+  instrumentFetch,
+  uninstrumentFetch,
+  isFetchInstrumented,
+} from "./instrument-fetch.js";

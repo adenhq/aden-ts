@@ -323,33 +323,40 @@ export async function instrumentAnthropic(options: MeterOptions): Promise<boolea
     return true;
   }
 
-  // Try to import @anthropic-ai/sdk using dynamic import
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let Anthropic: any = null;
+  let Messages: any = null;
   try {
-    const anthropicModule = await import("@anthropic-ai/sdk");
-    Anthropic = anthropicModule.default || anthropicModule.Anthropic;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let Anthropic: any = null;
+
+    // Prefer SDK class from options (ensures same module instance as user code)
+    if (options.sdks?.Anthropic) {
+      Anthropic = options.sdks.Anthropic;
+    } else {
+      // Fallback to dynamic import (may be different module instance in some bundlers)
+      const anthropicModule = await import("@anthropic-ai/sdk") as any;
+      Anthropic = anthropicModule.default || anthropicModule.Anthropic;
+    }
+
+    // The Messages class is used by client.messages
+    Messages = Anthropic?.Messages;
   } catch {
     // SDK not installed
     return false;
   }
 
-  if (!Anthropic) {
+  if (!Messages) {
     return false;
   }
 
   globalOptions = options;
 
-  // Anthropic SDK structure: Anthropic -> messages.create()
-  // We need to patch the messages resource's create method
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const messagesProto = Anthropic.prototype.messages as any;
-
-  if (messagesProto?.create) {
-    originalMessagesCreate = messagesProto.create as (
+  // Patch Messages.prototype.create directly
+  if (Messages.prototype?.create) {
+    originalMessagesCreate = Messages.prototype.create as (
       ...args: unknown[]
     ) => unknown;
-    messagesProto.create = wrapMessagesCreate(
+    Messages.prototype.create = wrapMessagesCreate(
       originalMessagesCreate,
       () => globalOptions!
     );
@@ -370,14 +377,12 @@ export async function uninstrumentAnthropic(): Promise<void> {
   }
 
   try {
-    const anthropicModule = await import("@anthropic-ai/sdk");
-    const Anthropic = (anthropicModule.default || anthropicModule.Anthropic) as any;
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const messagesProto = Anthropic.prototype.messages as any;
+    const anthropicModule = await import("@anthropic-ai/sdk") as any;
+    const Messages = anthropicModule.Messages;
 
-    if (originalMessagesCreate && messagesProto) {
-      messagesProto.create = originalMessagesCreate;
+    if (originalMessagesCreate && Messages?.prototype) {
+      Messages.prototype.create = originalMessagesCreate;
       originalMessagesCreate = null;
     }
   } catch {

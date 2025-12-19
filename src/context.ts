@@ -67,9 +67,8 @@ const AGENT_PATTERNS = [
 const SKIP_PATTERNS = [
   /node_modules/,
   /node:internal/,
-  /llm-meter/,
+  /llm-meter\/dist/,
   /openai-meter/,
-  /arp-ingress-exp/,
   /dist\/index\.(m?js|cjs)/,
   /<anonymous>/,
   /^native /,
@@ -126,6 +125,44 @@ export function extractCallSite(): CallSite | undefined {
 const DEFAULT_MAX_STACK_FRAMES = 10;
 
 /**
+ * Patterns to filter when capturing call stack (less aggressive than SKIP_PATTERNS)
+ * Allows framework code but filters out Node internals and our own instrumentation
+ */
+const STACK_SKIP_PATTERNS = [
+  /node:internal/,
+  /llm-meter\/dist/,
+  /openai-meter/,
+  /dist\/index\.(m?js|cjs)/,
+  /<anonymous>/,
+  /^native /,
+];
+
+/**
+ * Parse a stack line without filtering (for call stack capture)
+ */
+function parseStackLineUnfiltered(line: string): CallSite | null {
+  const match = line.match(
+    /^\s*at\s+(?:(.+?)\s+\()?(.+?):(\d+):(\d+)\)?$/
+  );
+
+  if (!match) return null;
+
+  const [, func, file, lineStr, colStr] = match;
+
+  // Skip only internal/instrumentation frames, allow node_modules
+  if (STACK_SKIP_PATTERNS.some((p) => p.test(file))) {
+    return null;
+  }
+
+  return {
+    file,
+    line: parseInt(lineStr, 10),
+    column: parseInt(colStr, 10),
+    function: func || undefined,
+  };
+}
+
+/**
  * Extract multiple call stack frames from the current stack.
  * Returns an array of formatted strings: "file:line:function" or "file:line"
  *
@@ -138,7 +175,7 @@ export function extractCallStack(maxFrames: number = DEFAULT_MAX_STACK_FRAMES): 
 
   // Skip first line ("Error") and internal frames
   for (let i = 1; i < stack.length && frames.length < maxFrames; i++) {
-    const site = parseStackLine(stack[i]);
+    const site = parseStackLineUnfiltered(stack[i]);
     if (site) {
       // Format: "file:line:function" or "file:line" if no function
       const frame = site.function

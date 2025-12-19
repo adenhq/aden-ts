@@ -247,8 +247,6 @@ function wrapSendMessage(
     const spanId = options.generateSpanId?.() ?? randomUUID();
     const t0 = Date.now();
 
-    console.log(`[llm-meter] Gemini sendMessage called, model: ${extractModelName(model)}`);
-
     try {
       const result = await originalFn.apply(this, args);
 
@@ -258,7 +256,6 @@ function wrapSendMessage(
         (response?.response as Record<string, unknown>)?.usageMetadata;
 
       const event = buildFlatEvent(spanId, model, false, Date.now() - t0, usageMetadata, options);
-      console.log(`[llm-meter] Gemini sendMessage completed, latency: ${event.latency_ms}ms, tokens: ${event.input_tokens}/${event.output_tokens}`);
       await options.emitMetric(event);
       return result;
     } catch (error) {
@@ -366,7 +363,6 @@ function wrapChatSession(
 ): Record<string, unknown> {
   // Wrap sendMessage
   if (chat.sendMessage && typeof chat.sendMessage === "function") {
-    console.log("[llm-meter] Wrapping ChatSession.sendMessage");
     const originalSendMessage = chat.sendMessage.bind(chat);
     chat.sendMessage = wrapSendMessage(
       originalSendMessage as (...args: unknown[]) => Promise<unknown>,
@@ -377,7 +373,6 @@ function wrapChatSession(
 
   // Wrap sendMessageStream
   if (chat.sendMessageStream && typeof chat.sendMessageStream === "function") {
-    console.log("[llm-meter] Wrapping ChatSession.sendMessageStream");
     const originalSendMessageStream = chat.sendMessageStream.bind(chat);
     chat.sendMessageStream = wrapSendMessageStream(
       originalSendMessageStream as (...args: unknown[]) => Promise<unknown>,
@@ -398,8 +393,6 @@ function wrapChatSession(
  * @returns true if instrumentation was successful, false if SDK not found
  */
 export async function instrumentGemini(options: MeterOptions): Promise<boolean> {
-  console.log("[llm-meter] instrumentGemini called");
-
   if (isInstrumented) {
     console.warn(
       "[llm-meter] Gemini already instrumented. Call uninstrumentGemini() first to re-instrument."
@@ -413,35 +406,22 @@ export async function instrumentGemini(options: MeterOptions): Promise<boolean> 
   // First, check if SDK class was provided via options (preferred for monorepos/file dependencies)
   if (options.sdks?.GoogleGenerativeAI) {
     GoogleGenerativeAI = options.sdks.GoogleGenerativeAI;
-    console.log("[llm-meter] Using provided GoogleGenerativeAI class from options.sdks");
   } else {
     // Fall back to dynamic import (works when there's only one copy of the SDK)
     try {
       const geminiModule = await import("@google/generative-ai");
-      console.log("[llm-meter] Gemini SDK loaded via import, module keys:", Object.keys(geminiModule));
       GoogleGenerativeAI = geminiModule.GoogleGenerativeAI;
-    } catch (err) {
-      console.log("[llm-meter] Failed to load Gemini SDK:", err);
+    } catch {
       // SDK not installed
       return false;
     }
   }
 
-  console.log("[llm-meter] GoogleGenerativeAI constructor:", GoogleGenerativeAI ? "found" : "not found");
-  if (GoogleGenerativeAI?.prototype) {
-    console.log("[llm-meter] GoogleGenerativeAI.prototype methods:", Object.getOwnPropertyNames(GoogleGenerativeAI.prototype));
-  }
-
   if (!GoogleGenerativeAI) {
-    console.log("[llm-meter] GoogleGenerativeAI is null/undefined");
     return false;
   }
 
   globalOptions = options;
-
-  // Add a marker to verify we're patching the right prototype
-  (GoogleGenerativeAI.prototype as Record<string, unknown>).__llmMeterInstrumented = true;
-  console.log("[llm-meter] Added instrumentation marker to GoogleGenerativeAI.prototype");
 
   // Gemini's architecture: GoogleGenerativeAI -> getGenerativeModel() -> GenerativeModel
   // We need to wrap the GenerativeModel's methods
@@ -449,15 +429,12 @@ export async function instrumentGemini(options: MeterOptions): Promise<boolean> 
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   originalGetGenerativeModel = GoogleGenerativeAI.prototype.getGenerativeModel as any;
-  console.log("[llm-meter] Original getGenerativeModel:", typeof originalGetGenerativeModel);
 
   if (originalGetGenerativeModel) {
-    console.log("[llm-meter] Patching GoogleGenerativeAI.prototype.getGenerativeModel");
     GoogleGenerativeAI.prototype.getGenerativeModel = function (
       this: unknown,
       ...args: unknown[]
     ) {
-      console.log("[llm-meter] >>> getGenerativeModel called!");
       const model = (originalGetGenerativeModel as Function).apply(this, args) as Record<string, unknown>;
 
       // Store original methods if not already wrapped
@@ -493,13 +470,11 @@ export async function instrumentGemini(options: MeterOptions): Promise<boolean> 
         }
         const boundStartChat = (model.startChat as Function).bind(model);
         model.startChat = function (...args: unknown[]) {
-          console.log("[llm-meter] Gemini startChat called");
           const chat = boundStartChat(...args) as Record<string, unknown>;
           return wrapChatSession(chat, () => globalOptions!, () => model);
         };
       }
 
-      console.log(`[llm-meter] Gemini model wrapped: ${extractModelName(model)}`);
       return model;
     };
   }

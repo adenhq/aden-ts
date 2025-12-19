@@ -336,42 +336,52 @@ export async function instrumentOpenAI(options: MeterOptions): Promise<boolean> 
     return true;
   }
 
-  // Try to import openai using dynamic import
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let OpenAI: any = null;
+  let Completions: any = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let Responses: any = null;
+
   try {
-    const openaiModule = await import("openai");
-    OpenAI = openaiModule.default || openaiModule.OpenAI;
-  } catch {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let OpenAI: any = null;
+
+    // Prefer SDK class from options (ensures same module instance as user code)
+    if (options.sdks?.OpenAI) {
+      OpenAI = options.sdks.OpenAI;
+    } else {
+      // Fallback to dynamic import (may be different module instance in some bundlers)
+      const openaiModule = await import("openai") as any;
+      OpenAI = openaiModule.default || openaiModule.OpenAI;
+    }
+
+    // The Chat.Completions class is used by client.chat.completions
+    // The Responses class is used by client.responses
+    Completions = OpenAI?.Chat?.Completions;
+    Responses = OpenAI?.Responses;
+  } catch (e) {
     // SDK not installed
     return false;
   }
 
-  if (!OpenAI) {
+  if (!Completions && !Responses) {
     return false;
   }
 
   globalOptions = options;
 
-  // Get the prototype to patch
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const responsesProto = OpenAI.prototype.responses as any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const chatCompletionsProto = (OpenAI.prototype.chat as any)?.completions as any;
-
-  // Patch responses.create
-  if (responsesProto?.create) {
-    originalResponsesCreate = responsesProto.create as (...args: unknown[]) => unknown;
-    responsesProto.create = wrapCreateMethod(
+  // Patch Responses.prototype.create
+  if (Responses?.prototype?.create) {
+    originalResponsesCreate = Responses.prototype.create as (...args: unknown[]) => unknown;
+    Responses.prototype.create = wrapCreateMethod(
       originalResponsesCreate,
       () => globalOptions!
     );
   }
 
-  // Patch chat.completions.create
-  if (chatCompletionsProto?.create) {
-    originalChatCreate = chatCompletionsProto.create as (...args: unknown[]) => unknown;
-    chatCompletionsProto.create = wrapCreateMethod(
+  // Patch Completions.prototype.create (for chat.completions.create)
+  if (Completions?.prototype?.create) {
+    originalChatCreate = Completions.prototype.create as (...args: unknown[]) => unknown;
+    Completions.prototype.create = wrapCreateMethod(
       originalChatCreate,
       () => globalOptions!
     );
@@ -392,21 +402,19 @@ export async function uninstrumentOpenAI(): Promise<void> {
   }
 
   try {
-    const openaiModule = await import("openai");
-    const OpenAI = (openaiModule.default || openaiModule.OpenAI) as any;
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const responsesProto = OpenAI.prototype.responses as any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const chatCompletionsProto = (OpenAI.prototype.chat as any)?.completions as any;
+    const openaiModule = await import("openai") as any;
+    const OpenAI = openaiModule.default || openaiModule.OpenAI;
+    const Completions = OpenAI?.Chat?.Completions;
+    const Responses = OpenAI?.Responses;
 
-    if (originalResponsesCreate && responsesProto) {
-      responsesProto.create = originalResponsesCreate;
+    if (originalResponsesCreate && Responses?.prototype) {
+      Responses.prototype.create = originalResponsesCreate;
       originalResponsesCreate = null;
     }
 
-    if (originalChatCreate && chatCompletionsProto) {
-      chatCompletionsProto.create = originalChatCreate;
+    if (originalChatCreate && Completions?.prototype) {
+      Completions.prototype.create = originalChatCreate;
       originalChatCreate = null;
     }
   } catch {

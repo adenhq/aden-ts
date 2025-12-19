@@ -20,6 +20,10 @@ export {
   instrumentAnthropic,
   uninstrumentAnthropic,
   isAnthropicInstrumented,
+  // Fetch instrumentation (for frameworks like Vercel AI SDK, LangChain)
+  instrumentFetch,
+  uninstrumentFetch,
+  isFetchInstrumented,
 } from "./instrument.js";
 export type { InstrumentationResult } from "./instrument.js";
 
