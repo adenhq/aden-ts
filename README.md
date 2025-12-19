@@ -1,17 +1,66 @@
 # Aden
 
-Aden Control Plane - Real-time cost control and observability for LLM SDKs (OpenAI, Gemini, Anthropic). Track usage metrics, enforce budgets, and implement control policies without modifying your existing code.
+**LLM Observability & Cost Control SDK**
 
-## Features
+Aden automatically tracks every LLM API call in your application—usage, latency, costs—and gives you real-time controls to prevent budget overruns. Works with OpenAI, Anthropic, and Google Gemini.
 
-- **Multi-provider support** - Automatically detects and instruments OpenAI, Gemini, and Anthropic SDKs
-- **Zero-config metering** - Call `instrument()` once and start collecting metrics
-- **Streaming support** - Metrics collected from streaming responses automatically
-- **Usage normalization** - Consistent format across all providers and API shapes
-- **Budget guardrails** - Pre-flight token counting to prevent runaway costs
-- **Call relationship tracking** - Automatic session grouping, agent hierarchies, and call site detection
-- **Flexible emitters** - Console, batched, multi-destination, and custom emitters
-- **Full TypeScript support** - Complete type definitions included
+```typescript
+import { instrument } from "aden";
+import OpenAI from "openai";
+
+// One line to start tracking everything
+await instrument({ sdks: { OpenAI } });
+
+// Use your SDK normally - metrics collected automatically
+const openai = new OpenAI();
+const response = await openai.chat.completions.create({
+  model: "gpt-4o",
+  messages: [{ role: "user", content: "Hello!" }],
+});
+```
+
+---
+
+## Table of Contents
+
+- [Why Aden?](#why-aden)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Sending Metrics to Your Backend](#sending-metrics-to-your-backend)
+- [Cost Control](#cost-control)
+  - [Setting Up the Control Server](#setting-up-the-control-server)
+  - [Control Actions](#control-actions)
+- [Multi-Provider Support](#multi-provider-support)
+- [What Metrics Are Collected?](#what-metrics-are-collected)
+- [Metric Emitters](#metric-emitters)
+- [Call Relationship Tracking](#call-relationship-tracking)
+- [Framework Integrations](#framework-integrations)
+- [Advanced Configuration](#advanced-configuration)
+- [API Reference](#api-reference)
+- [Examples](#examples)
+- [Troubleshooting](#troubleshooting)
+
+---
+
+## Why Aden?
+
+Building with LLMs is expensive and unpredictable:
+
+- **No visibility**: You don't know which features or users consume the most tokens
+- **Runaway costs**: One bug or bad prompt can blow through your budget in minutes
+- **No control**: Once a request is sent, you can't stop it
+
+Aden solves these problems:
+
+| Problem | Aden Solution |
+|---------|---------------|
+| No visibility into LLM usage | Automatic metric collection for every API call |
+| Unpredictable costs | Real-time budget tracking and enforcement |
+| No per-user limits | Context-based controls (per user, per feature, per tenant) |
+| Expensive models used unnecessarily | Automatic model degradation when approaching limits |
+| Alert fatigue | Smart alerts based on spend thresholds |
+
+---
 
 ## Installation
 
@@ -19,601 +68,797 @@ Aden Control Plane - Real-time cost control and observability for LLM SDKs (Open
 npm install aden
 ```
 
-Optional peer dependencies (install the ones you use):
+You'll also need at least one LLM SDK:
+
 ```bash
-npm install openai                  # For OpenAI
-npm install @google/generative-ai   # For Gemini
-npm install @anthropic-ai/sdk       # For Anthropic/Claude
+# Install the SDKs you use
+npm install openai                  # For OpenAI/GPT models
+npm install @anthropic-ai/sdk       # For Anthropic/Claude models
+npm install @google/generative-ai   # For Google Gemini models
 ```
+
+---
 
 ## Quick Start
 
+### Step 1: Add Instrumentation
+
+Add this **once** at your application startup (before creating any LLM clients):
+
 ```typescript
+// app.ts or index.ts
 import { instrument, createConsoleEmitter } from "aden";
-
-// Call once at startup - all available LLM clients are now metered
-const result = instrument({
-  emitMetric: createConsoleEmitter({ pretty: true }),
-});
-
-console.log(result);
-// { openai: true, gemini: true, anthropic: false }
-
-// Use any LLM SDK normally - metrics collected automatically
 import OpenAI from "openai";
+
+await instrument({
+  emitMetric: createConsoleEmitter({ pretty: true }),
+  sdks: { OpenAI },
+});
+```
+
+### Step 2: Use Your SDK Normally
+
+That's it! Every API call is now tracked:
+
+```typescript
 const openai = new OpenAI();
-await openai.chat.completions.create({ model: "gpt-4", messages: [...] });
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
-const gemini = new GoogleGenerativeAI(apiKey);
-const model = gemini.getGenerativeModel({ model: "gemini-pro" });
-await model.generateContent("Hello!");
+const response = await openai.chat.completions.create({
+  model: "gpt-4o",
+  messages: [{ role: "user", content: "Explain quantum computing" }],
+});
+
+// Console output:
+// [aden] openai/gpt-4o | 247 tokens | 1,234ms | $0.00742
 ```
 
-### Per-Instance Wrapping (Alternative)
-
-If you need different options per client, use `makeMeteredOpenAI`:
+### Step 3: Clean Up on Shutdown
 
 ```typescript
-import { makeMeteredOpenAI } from "aden";
+import { uninstrument } from "aden";
 
-const client = new OpenAI();
-const metered = makeMeteredOpenAI(client, {
-  emitMetric: myEmitter,
+// In your shutdown handler
+await uninstrument();
+```
+
+---
+
+## Sending Metrics to Your Backend
+
+For production, send metrics to your backend instead of the console:
+
+### Option A: HTTP Endpoint
+
+```typescript
+import { instrument, createHttpTransport } from "aden";
+import OpenAI from "openai";
+
+const transport = createHttpTransport({
+  apiUrl: "https://api.yourcompany.com/v1/metrics",
+  apiKey: process.env.METRICS_API_KEY,
+});
+
+await instrument({
+  emitMetric: transport.emit,
+  sdks: { OpenAI },
+});
+
+// On shutdown
+await transport.stop();
+```
+
+### Option B: Aden Control Server
+
+For real-time cost control (budgets, throttling, model degradation), connect to an Aden control server:
+
+```typescript
+import { instrument } from "aden";
+import OpenAI from "openai";
+
+await instrument({
+  apiKey: process.env.ADEN_API_KEY,        // Your Aden API key
+  serverUrl: process.env.ADEN_API_URL,     // Control server URL
+  sdks: { OpenAI },
 });
 ```
 
-## Metrics Collected
+This enables all the [Cost Control](#cost-control) features described below.
 
-Every API call emits a `MetricEvent` with:
-
-| Field | Description |
-|-------|-------------|
-| `traceId` | Unique ID for correlation |
-| `requestId` | OpenAI's request ID |
-| `model` | Model used |
-| `latency_ms` | Request duration |
-| `usage.input_tokens` | Input/prompt tokens |
-| `usage.output_tokens` | Output/completion tokens |
-| `usage.cached_tokens` | Tokens served from cache |
-| `usage.reasoning_tokens` | Reasoning tokens (o1/o3 models) |
-| `service_tier` | Service tier used |
-| `tool_calls` | Tool calls made |
-| `error` | Error message if failed |
-
-## Budget Guardrails
-
-Prevent runaway costs with pre-flight token counting:
+### Option C: Custom Handler
 
 ```typescript
-import { withBudgetGuardrails } from "aden";
-
-const budgeted = withBudgetGuardrails(metered, {
-  maxInputTokens: 4000,
-  onExceeded: "throw", // or "warn"
-});
-
-// Throws BudgetExceededError if input > 4000 tokens
-await budgeted.responses.create({
-  model: "gpt-4.1",
-  input: veryLongPrompt,
-});
-```
-
-## Custom Metric Handlers
-
-Send metrics to your backend:
-
-```typescript
-import { makeMeteredOpenAI, createBatchEmitter } from "aden";
-
-const batchEmitter = createBatchEmitter(
-  async (events) => {
-    await fetch("/api/metrics", {
-      method: "POST",
-      body: JSON.stringify(events),
-    });
+await instrument({
+  emitMetric: async (event) => {
+    // event contains: model, tokens, latency, cost, etc.
+    await myDatabase.insert("llm_metrics", event);
   },
-  { maxBatchSize: 100, flushInterval: 5000 }
-);
-
-const metered = makeMeteredOpenAI(client, {
-  emitMetric: batchEmitter,
+  sdks: { OpenAI },
 });
-
-// Don't forget to flush on shutdown
-process.on("beforeExit", () => batchEmitter.stop());
 ```
 
-## Streaming
+---
 
-Metrics are automatically collected when streaming completes:
+## Cost Control
+
+Aden's cost control system lets you set budgets, throttle requests, and automatically downgrade to cheaper models—all in real-time.
+
+### Setting Up the Control Server
+
+1. **Get an API key** from your Aden control server (or deploy your own)
+
+2. **Set environment variables**:
+   ```bash
+   ADEN_API_KEY=your-api-key
+   ADEN_API_URL=https://your-control-server.com  # Optional, has default
+   ```
+
+3. **Instrument with cost control**:
+   ```typescript
+   import { instrument } from "aden";
+   import OpenAI from "openai";
+
+   await instrument({
+     apiKey: process.env.ADEN_API_KEY,
+     sdks: { OpenAI },
+
+     // Track usage per user (required for per-user budgets)
+     getContextId: () => getCurrentUserId(),
+
+     // Get notified when alerts trigger
+     onAlert: (alert) => {
+       console.warn(`[${alert.level}] ${alert.message}`);
+       // Send to Slack, PagerDuty, etc.
+     },
+   });
+   ```
+
+### Control Actions
+
+The control server can apply these actions to requests:
+
+| Action | What It Does | Use Case |
+|--------|--------------|----------|
+| **allow** | Request proceeds normally | Default when within limits |
+| **block** | Request is rejected with an error | Budget exhausted |
+| **throttle** | Request is delayed before proceeding | Rate limiting |
+| **degrade** | Request uses a cheaper model | Approaching budget limit |
+| **alert** | Request proceeds, notification sent | Warning threshold reached |
+
+### Example: Budget with Degradation
+
+Configure on your control server:
+
+```bash
+# Set a $10 budget for user_123
+curl -X POST https://control-server/v1/control/policy/budgets \
+  -H "Authorization: Bearer $ADEN_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "context_id": "user_123",
+    "limit_usd": 10.00,
+    "action_on_exceed": "block"
+  }'
+
+# Degrade gpt-4o to gpt-4o-mini when at 50% budget
+curl -X POST https://control-server/v1/control/policy/degradations \
+  -H "Authorization: Bearer $ADEN_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from_model": "gpt-4o",
+    "to_model": "gpt-4o-mini",
+    "trigger": "budget_threshold",
+    "threshold_percent": 50,
+    "context_id": "user_123"
+  }'
+
+# Alert when budget exceeds 80%
+curl -X POST https://control-server/v1/control/policy/alerts \
+  -H "Authorization: Bearer $ADEN_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "context_id": "user_123",
+    "trigger": "budget_threshold",
+    "threshold_percent": 80,
+    "level": "warning",
+    "message": "User approaching budget limit"
+  }'
+```
+
+**What happens in your app**:
 
 ```typescript
-const stream = await metered.responses.create({
-  model: "gpt-4.1",
-  input: "Count to 10",
+// User has spent $0 (0% of $10 budget)
+await openai.chat.completions.create({ model: "gpt-4o", ... });
+// → Uses gpt-4o ✓
+
+// User has spent $5 (50% of budget)
+await openai.chat.completions.create({ model: "gpt-4o", ... });
+// → Automatically uses gpt-4o-mini instead (degraded)
+
+// User has spent $8 (80% of budget)
+await openai.chat.completions.create({ model: "gpt-4o", ... });
+// → Uses gpt-4o-mini, triggers alert callback
+
+// User has spent $10+ (100% of budget)
+await openai.chat.completions.create({ model: "gpt-4o", ... });
+// → Throws RequestCancelledError: "Budget exceeded"
+```
+
+---
+
+## Multi-Provider Support
+
+Aden works with all major LLM providers:
+
+```typescript
+import { instrument } from "aden";
+import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+// Instrument all providers at once
+await instrument({
+  apiKey: process.env.ADEN_API_KEY,
+  sdks: {
+    OpenAI,
+    Anthropic,
+    GoogleGenerativeAI,
+  },
+});
+
+// All SDKs are now tracked
+const openai = new OpenAI();
+const anthropic = new Anthropic();
+const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+```
+
+### OpenAI
+
+```typescript
+const openai = new OpenAI();
+
+// Chat completions
+await openai.chat.completions.create({
+  model: "gpt-4o",
+  messages: [{ role: "user", content: "Hello" }],
+});
+
+// Streaming
+const stream = await openai.chat.completions.create({
+  model: "gpt-4o",
+  messages: [{ role: "user", content: "Tell me a story" }],
   stream: true,
 });
 
-for await (const event of stream) {
-  // Process events...
+for await (const chunk of stream) {
+  process.stdout.write(chunk.choices[0]?.delta?.content || "");
 }
-// Metrics emitted automatically when stream ends
+// Metrics emitted when stream completes
 ```
 
-## Available Emitters
-
-| Emitter | Description |
-|---------|-------------|
-| `createConsoleEmitter()` | Log to console (dev/debug) |
-| `createBatchEmitter()` | Batch and flush periodically |
-| `createHttpTransport()` | Send to HTTP API endpoint |
-| `createMultiEmitter()` | Send to multiple destinations |
-| `createFilteredEmitter()` | Filter events before emitting |
-| `createMemoryEmitter()` | Collect in memory (testing) |
-| `createNoopEmitter()` | Disable metrics |
-
-## HTTP Transport
-
-Send metrics to a central API endpoint for storage and aggregation. This is the recommended approach for production deployments.
-
-### Basic Usage
+### Anthropic
 
 ```typescript
-import { makeMeteredOpenAI, createHttpTransport } from "aden";
+const anthropic = new Anthropic();
 
-const transport = createHttpTransport({
-  apiUrl: "https://api.example.com/v1/metrics",
-  apiKey: "your-api-key",
+await anthropic.messages.create({
+  model: "claude-3-5-sonnet-20241022",
+  max_tokens: 1024,
+  messages: [{ role: "user", content: "Hello" }],
+});
+```
+
+### Google Gemini
+
+```typescript
+const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const model = gemini.getGenerativeModel({ model: "gemini-pro" });
+
+await model.generateContent("Explain quantum computing");
+```
+
+---
+
+## What Metrics Are Collected?
+
+Every LLM API call generates a `MetricEvent`:
+
+```typescript
+interface MetricEvent {
+  // Identity
+  trace_id: string;           // Unique ID for this request
+  span_id: string;            // Span ID (OTel compatible)
+  request_id: string | null;  // Provider's request ID
+
+  // Request details
+  provider: "openai" | "anthropic" | "gemini";
+  model: string;              // e.g., "gpt-4o", "claude-3-5-sonnet"
+  stream: boolean;
+  timestamp: string;          // ISO timestamp
+
+  // Performance
+  latency_ms: number;
+  status_code?: number;
+  error?: string;
+
+  // Token usage
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  cached_tokens: number;      // Prompt cache hits
+  reasoning_tokens: number;   // For o1/o3 models
+
+  // Rate limits (when available)
+  rate_limit_remaining_requests?: number;
+  rate_limit_remaining_tokens?: number;
+
+  // Tool usage
+  tool_call_count?: number;
+  tool_names?: string;        // Comma-separated
+
+  // Call relationship (when enabled)
+  parent_span_id?: string;
+  call_sequence?: number;
+  agent_stack?: string[];
+  call_site_file?: string;
+  call_site_line?: number;
+
+  // Custom metadata
+  metadata?: Record<string, string>;
+}
+```
+
+---
+
+## Metric Emitters
+
+Emitters determine where metrics go. You can use built-in emitters or create custom ones.
+
+### Built-in Emitters
+
+```typescript
+import {
+  createConsoleEmitter,      // Log to console (development)
+  createHttpTransport,       // Send to HTTP endpoint
+  createBatchEmitter,        // Batch before sending
+  createMultiEmitter,        // Send to multiple destinations
+  createFilteredEmitter,     // Filter events
+  createTransformEmitter,    // Transform events
+  createJsonFileEmitter,     // Write to JSON file
+  createMemoryEmitter,       // Store in memory (testing)
+  createNoopEmitter,         // Discard all events
+} from "aden";
+```
+
+### Console Emitter (Development)
+
+```typescript
+await instrument({
+  emitMetric: createConsoleEmitter({ pretty: true }),
+  sdks: { OpenAI },
 });
 
-const metered = makeMeteredOpenAI(client, {
-  emitMetric: transport.emit,
-});
-
-// On shutdown - flush remaining metrics
-await transport.stop();
+// Output:
+// [aden] openai/gpt-4o | 247 tokens | 1,234ms
 ```
 
-### Environment Variable Configuration
-
-```typescript
-// Set environment variables:
-// METER_API_URL=https://api.example.com/v1/metrics
-// METER_API_KEY=your-api-key (optional)
-// METER_BATCH_SIZE=50 (optional)
-// METER_FLUSH_INTERVAL=5000 (optional, in ms)
-
-const transport = createHttpTransport(); // Uses env vars
-```
-
-### Advanced Options
+### HTTP Transport (Production)
 
 ```typescript
 const transport = createHttpTransport({
-  apiUrl: "https://api.example.com/v1/metrics",
-  apiKey: "your-api-key",
-  batchSize: 100,           // Events per batch (default: 50)
-  flushInterval: 10000,     // ms between flushes (default: 5000)
-  timeout: 15000,           // Request timeout in ms (default: 10000)
-  maxRetries: 5,            // Retry attempts (default: 3)
-  maxQueueSize: 50000,      // Max queued events (default: 10000)
-  headers: {                // Additional headers
-    "X-Tenant-ID": "tenant-123",
-  },
-  onQueueOverflow: (dropped) => {
-    console.warn(`Dropped ${dropped} metrics due to queue overflow`);
-  },
-  onSendError: (error, batch, stats) => {
+  apiUrl: "https://api.yourcompany.com/v1/metrics",
+  apiKey: process.env.METRICS_API_KEY,
+
+  // Batching (optional)
+  batchSize: 50,              // Events per batch
+  flushInterval: 5000,        // ms between flushes
+
+  // Reliability (optional)
+  maxRetries: 3,
+  timeout: 10000,
+  maxQueueSize: 10000,
+
+  // Error handling (optional)
+  onSendError: (error, batch) => {
     console.error(`Failed to send ${batch.length} metrics:`, error);
-    // Optionally save to fallback storage
   },
 });
-```
 
-### Monitoring Transport Health
-
-```typescript
-// Check transport stats
-const stats = transport.stats;
-console.log(`Sent: ${stats.sent}, Dropped: ${stats.dropped}, Errors: ${stats.errors}`);
-
-// Manual flush
-await transport.flush();
-
-// Flush all remaining events
-await transport.flushAll();
+await instrument({
+  emitMetric: transport.emit,
+  sdks: { OpenAI },
+});
 
 // Graceful shutdown
-await transport.stop();
+process.on("SIGTERM", async () => {
+  await transport.stop();  // Flushes remaining events
+  process.exit(0);
+});
 ```
 
-### API Endpoint Format
+### Multiple Destinations
 
-The transport sends POST requests with this payload:
+```typescript
+await instrument({
+  emitMetric: createMultiEmitter([
+    createConsoleEmitter({ pretty: true }),  // Log locally
+    transport.emit,                           // Send to backend
+  ]),
+  sdks: { OpenAI },
+});
+```
 
-```json
-{
-  "metrics": [
-    {
-      "traceId": "uuid",
-      "requestId": "req_xxx",
-      "model": "gpt-4.1",
-      "latency_ms": 1234,
-      "usage": {
-        "input_tokens": 100,
-        "output_tokens": 50,
-        "total_tokens": 150
-      },
-      "sessionId": "session-uuid",
-      "callSequence": 1,
-      "agentStack": ["OrchestratorAgent"],
-      "callSite": { "file": "src/app.ts", "line": 42 }
+### Filtering Events
+
+```typescript
+await instrument({
+  emitMetric: createFilteredEmitter(
+    transport.emit,
+    (event) => event.total_tokens > 100  // Only large requests
+  ),
+  sdks: { OpenAI },
+});
+```
+
+### Custom Emitter
+
+```typescript
+await instrument({
+  emitMetric: async (event) => {
+    // Calculate cost
+    const cost = calculateCost(event.model, event.input_tokens, event.output_tokens);
+
+    // Store in your database
+    await db.llmMetrics.create({
+      ...event,
+      cost_usd: cost,
+      user_id: getCurrentUserId(),
+    });
+
+    // Check for anomalies
+    if (event.latency_ms > 30000) {
+      alertOps(`Slow LLM call: ${event.latency_ms}ms`);
     }
-  ],
-  "timestamp": 1702847123456
-}
+  },
+  sdks: { OpenAI },
+});
 ```
+
+---
 
 ## Call Relationship Tracking
 
-Automatically track relationships between LLM calls using AsyncLocalStorage. Related calls are grouped by session, with parent/child relationships, agent hierarchies, and source locations detected automatically.
+Track relationships between LLM calls—useful for multi-agent systems, conversation threads, and debugging.
 
-### Additional Metrics Collected
+### Automatic Session Tracking
 
-| Field | Description |
-|-------|-------------|
-| `sessionId` | Groups related calls together |
-| `parentTraceId` | Parent call for nested/hierarchical tracking |
-| `callSequence` | Order of calls within a session (1, 2, 3...) |
-| `agentStack` | Names of agents/handlers in the call chain |
-| `callSite` | Source location (file, line, column, function) |
-
-### Usage Pattern 1: Zero-Config (Auto-Session)
-
-The simplest approach - related calls are automatically grouped:
+Related calls are automatically grouped:
 
 ```typescript
-import { makeMeteredOpenAI, createConsoleEmitter } from "aden";
+// These calls share a session automatically
+await openai.chat.completions.create({ model: "gpt-4o", ... });
+// → trace_id: "abc", call_sequence: 1
 
-const metered = makeMeteredOpenAI(client, {
-  emitMetric: createConsoleEmitter({ pretty: true }),
-  // trackCallRelationships: true (default)
-});
-
-// These calls automatically share a session
-await metered.responses.create({ model: "gpt-4.1", input: "Hello" });
-// → sessionId: "abc-123", callSequence: 1
-
-await metered.responses.create({ model: "gpt-4.1", input: "Follow up" });
-// → sessionId: "abc-123", callSequence: 2, parentTraceId: <first-call-trace>
+await openai.chat.completions.create({ model: "gpt-4o", ... });
+// → trace_id: "abc", call_sequence: 2, parent_span_id: <first call>
 ```
 
-### Usage Pattern 2: Explicit Session with Metadata
+### Named Agent Tracking
 
-For request handlers where you want isolated sessions with custom metadata:
+For multi-agent systems, track which agent made each call:
+
+```typescript
+import { withAgent } from "aden";
+
+await withAgent("ResearchAgent", async () => {
+  await openai.chat.completions.create({ ... });
+  // → agent_stack: ["ResearchAgent"]
+
+  await withAgent("WebSearchAgent", async () => {
+    await openai.chat.completions.create({ ... });
+    // → agent_stack: ["ResearchAgent", "WebSearchAgent"]
+  });
+});
+```
+
+### Request Context
+
+Isolate sessions per HTTP request:
 
 ```typescript
 import { enterMeterContext } from "aden";
 
 app.post("/chat", async (req, res) => {
-  // Create a new session for this request
+  // Create isolated session for this request
   enterMeterContext({
-    sessionId: req.headers["x-request-id"], // optional custom ID
-    metadata: { userId: req.userId, tenantId: req.tenantId },
+    sessionId: req.headers["x-request-id"],
+    metadata: { userId: req.userId },
   });
 
-  // All LLM calls in this request share the session
-  const response = await metered.responses.create({
-    model: "gpt-4.1",
-    input: req.body.message,
-  });
-  // → sessionId tied to this request, metadata available
+  // All LLM calls here share this session
+  const response = await openai.chat.completions.create({ ... });
+  // → metadata includes userId
+});
+```
 
+### Disabling Relationship Tracking
+
+For high-throughput scenarios:
+
+```typescript
+await instrument({
+  emitMetric: myEmitter,
+  sdks: { OpenAI },
+  trackCallRelationships: false,  // Slight performance boost
+});
+```
+
+---
+
+## Framework Integrations
+
+### Vercel AI SDK
+
+```typescript
+import { instrument, instrumentFetch } from "aden";
+
+// Instrument fetch for Vercel AI SDK
+instrumentFetch({
+  emitMetric: myEmitter,
+  urlPatterns: [/api\.openai\.com/, /api\.anthropic\.com/],
+});
+
+// Now Vercel AI SDK calls are tracked
+import { generateText } from "ai";
+import { openai } from "@ai-sdk/openai";
+
+await generateText({
+  model: openai("gpt-4o"),
+  prompt: "Hello!",
+});
+```
+
+### LangChain
+
+```typescript
+import { instrument } from "aden";
+import OpenAI from "openai";
+
+// Instrument the underlying SDK
+await instrument({
+  emitMetric: myEmitter,
+  sdks: { OpenAI },
+});
+
+// LangChain uses OpenAI under the hood
+import { ChatOpenAI } from "@langchain/openai";
+
+const model = new ChatOpenAI({ model: "gpt-4o" });
+await model.invoke("Hello!");
+// → Metrics captured automatically
+```
+
+### Express.js Middleware
+
+```typescript
+import express from "express";
+import { enterMeterContext } from "aden";
+
+const app = express();
+
+// Add context to each request
+app.use((req, res, next) => {
+  enterMeterContext({
+    sessionId: req.headers["x-request-id"] as string,
+    metadata: {
+      userId: req.userId,
+      endpoint: req.path,
+    },
+  });
+  next();
+});
+
+app.post("/chat", async (req, res) => {
+  // LLM calls here include request metadata
+  const response = await openai.chat.completions.create({ ... });
   res.json(response);
 });
 ```
 
-### Usage Pattern 3: Scoped Sessions
+---
 
-Use `withMeterContext` for explicit session boundaries:
+## Advanced Configuration
+
+### Full Options Reference
 
 ```typescript
-import { withMeterContextAsync } from "aden";
+await instrument({
+  // === Metrics Destination ===
+  emitMetric: myEmitter,          // Required unless apiKey is set
 
-// All calls inside share a session, isolated from outside
-const result = await withMeterContextAsync(async () => {
-  await metered.responses.create({ ... }); // callSequence: 1
-  await metered.responses.create({ ... }); // callSequence: 2
-  return processResults();
-}, { metadata: { workflow: "summarization" } });
+  // === Control Server (enables cost control) ===
+  apiKey: "aden_xxx",             // Your Aden API key
+  serverUrl: "https://...",       // Control server URL (optional)
+  failOpen: true,                 // Allow requests if server is down (default: true)
+
+  // === Context Tracking ===
+  getContextId: () => getUserId(), // For per-user budgets
+  trackCallRelationships: true,    // Track call hierarchies (default: true)
+
+  // === Alerts ===
+  onAlert: (alert) => {            // Callback when alert triggers
+    console.warn(`[${alert.level}] ${alert.message}`);
+  },
+
+  // === SDK Classes ===
+  sdks: {                          // SDK classes to instrument
+    OpenAI,
+    Anthropic,
+    GoogleGenerativeAI,
+  },
+
+  // === Advanced ===
+  generateSpanId: () => uuid(),    // Custom span ID generator
+  beforeRequest: async (params, context) => {
+    // Custom pre-request logic
+    return { action: "proceed" };
+  },
+  requestMetadata: {               // Passed to beforeRequest hook
+    environment: "production",
+  },
+});
 ```
 
-### Usage Pattern 4: Named Agent Tracking
+### beforeRequest Hook
 
-Track nested agent hierarchies for multi-agent systems:
-
-```typescript
-import { withAgent, pushAgent, popAgent } from "aden";
-
-// Option A: Using withAgent wrapper
-async function researchAgent() {
-  await withAgent("ResearchAgent", async () => {
-    await metered.responses.create({ ... });
-    // → agentStack: ["ResearchAgent"]
-
-    await withAgent("WebSearchAgent", async () => {
-      await metered.responses.create({ ... });
-      // → agentStack: ["ResearchAgent", "WebSearchAgent"]
-    });
-  });
-}
-
-// Option B: Manual push/pop for complex flows
-async function orchestratorAgent() {
-  pushAgent("OrchestratorAgent");
-  try {
-    await metered.responses.create({ ... });
-    // → agentStack: ["OrchestratorAgent"]
-
-    pushAgent("SubAgent");
-    await metered.responses.create({ ... });
-    // → agentStack: ["OrchestratorAgent", "SubAgent"]
-    popAgent();
-
-  } finally {
-    popAgent();
-  }
-}
-```
-
-### Usage Pattern 5: Automatic Agent Detection
-
-Agent names are automatically detected from your call stack:
+Implement custom rate limiting or request modification:
 
 ```typescript
-class ResearchAgent {
-  async execute() {
-    // "ResearchAgent" automatically detected from class name
-    await metered.responses.create({ ... });
-    // → agentStack: ["ResearchAgent"] (auto-detected)
-  }
-}
-
-async function handleUserRequest() {
-  // "handleUserRequest" detected as handler
-  await metered.responses.create({ ... });
-}
-```
-
-Detected patterns: `*Agent`, `*Handler`, `*Service`, `*Controller`, `handle*`, `process*`, `run*`, `execute*`
-
-### Usage Pattern 6: Context Metadata
-
-Attach and retrieve metadata from the current context:
-
-```typescript
-import { setContextMetadata, getContextMetadata, getCurrentContext } from "aden";
-
-// Set metadata
-setContextMetadata("userId", "user-123");
-setContextMetadata("experiment", "variant-a");
-
-// Get metadata
-const userId = getContextMetadata("userId");
-
-// Get full context
-const ctx = getCurrentContext();
-console.log(ctx.sessionId, ctx.callSequence, ctx.metadata);
-```
-
-### Usage Pattern 7: Disabling Relationship Tracking
-
-For high-throughput scenarios where you don't need relationship data:
-
-```typescript
-const metered = makeMeteredOpenAI(client, {
+await instrument({
   emitMetric: myEmitter,
-  trackCallRelationships: false, // Disable for performance
+  sdks: { OpenAI },
+
+  beforeRequest: async (params, context) => {
+    // Check your own rate limits
+    const allowed = await checkRateLimit(context.metadata?.userId);
+
+    if (!allowed) {
+      return { action: "cancel", reason: "Rate limit exceeded" };
+    }
+
+    // Optionally delay the request
+    if (shouldThrottle()) {
+      return { action: "throttle", delayMs: 1000 };
+    }
+
+    // Optionally switch to a cheaper model
+    if (shouldDegrade()) {
+      return {
+        action: "degrade",
+        toModel: "gpt-4o-mini",
+        reason: "High load"
+      };
+    }
+
+    return { action: "proceed" };
+  },
+
+  requestMetadata: {
+    userId: getCurrentUserId(),
+  },
 });
 ```
 
-### Full Example: Multi-Agent Orchestrator
+### Manual Control Agent
+
+For advanced scenarios, create the control agent manually:
 
 ```typescript
-import {
-  makeMeteredOpenAI,
-  enterMeterContext,
-  withAgent,
-  createBatchEmitter,
-} from "aden";
+import { createControlAgent, instrument } from "aden";
 
-const metered = makeMeteredOpenAI(client, {
-  emitMetric: createBatchEmitter(async (events) => {
-    // All events have sessionId, agentStack, callSequence, callSite
-    await sendToAnalytics(events);
-  }),
+const agent = createControlAgent({
+  serverUrl: "https://control-server.com",
+  apiKey: process.env.ADEN_API_KEY,
+
+  // Polling options (for HTTP fallback)
+  pollingIntervalMs: 30000,
+  heartbeatIntervalMs: 10000,
+  timeoutMs: 5000,
+
+  // Behavior
+  failOpen: true,               // Allow if server unreachable
+  getContextId: () => getUserId(),
+
+  // Alerts
+  onAlert: (alert) => {
+    sendToSlack(alert);
+  },
 });
 
-app.post("/agent/run", async (req, res) => {
-  // Start a new tracked session
-  enterMeterContext({
-    metadata: { userId: req.userId, taskId: req.body.taskId },
-  });
+await agent.connect();
 
-  // Orchestrator decides which agents to run
-  await withAgent("OrchestratorAgent", async () => {
-    const plan = await metered.responses.create({
-      model: "gpt-4.1",
-      input: `Plan for: ${req.body.task}`,
-    });
-    // → callSequence: 1, agentStack: ["OrchestratorAgent"]
-
-    // Execute sub-agents based on plan
-    for (const step of plan.steps) {
-      await withAgent(step.agentName, async () => {
-        await metered.responses.create({
-          model: "gpt-4.1",
-          input: step.prompt,
-        });
-        // → callSequence: 2+, agentStack: ["OrchestratorAgent", step.agentName]
-        // → parentTraceId: previous call's traceId
-      });
-    }
-  });
-
-  res.json({ status: "complete" });
+await instrument({
+  controlAgent: agent,
+  sdks: { OpenAI },
 });
 ```
+
+### Per-Instance Wrapping
+
+If you need different options for different clients:
+
+```typescript
+import { makeMeteredOpenAI } from "aden";
+
+const internalClient = makeMeteredOpenAI(new OpenAI(), {
+  emitMetric: internalMetricsEmitter,
+});
+
+const customerClient = makeMeteredOpenAI(new OpenAI(), {
+  emitMetric: customerMetricsEmitter,
+  beforeRequest: enforceCustomerLimits,
+});
+```
+
+---
 
 ## API Reference
 
-### `instrument(options)`
+### Core Functions
 
-**Recommended.** Instrument OpenAI globally. Call once at startup.
+| Function | Description |
+|----------|-------------|
+| `instrument(options)` | Instrument all LLM SDKs globally |
+| `uninstrument()` | Remove instrumentation |
+| `isInstrumented()` | Check if instrumented |
+| `getInstrumentedSDKs()` | Get which SDKs are instrumented |
 
-```typescript
-import { instrument, createHttpTransport } from "aden";
+### Emitter Factories
 
-instrument({
-  emitMetric: createHttpTransport({ apiUrl: process.env.METER_API_URL }).emit,
-});
+| Function | Description |
+|----------|-------------|
+| `createConsoleEmitter(options?)` | Log to console |
+| `createHttpTransport(options)` | Send to HTTP endpoint |
+| `createBatchEmitter(handler, options?)` | Batch events |
+| `createMultiEmitter(emitters)` | Multiple destinations |
+| `createFilteredEmitter(emitter, filter)` | Filter events |
+| `createJsonFileEmitter(options)` | Write to JSON file |
+| `createMemoryEmitter()` | Store in memory |
+| `createNoopEmitter()` | Discard events |
 
-// All OpenAI clients are now metered
-const client = new OpenAI();
-```
+### Context Functions
 
-### `uninstrument()`
+| Function | Description |
+|----------|-------------|
+| `enterMeterContext(options?)` | Enter a tracking context |
+| `withMeterContextAsync(fn, options?)` | Run in isolated context |
+| `withAgent(name, fn)` | Run with named agent |
+| `pushAgent(name)` / `popAgent()` | Manual agent stack |
+| `getCurrentContext()` | Get current context |
+| `setContextMetadata(key, value)` | Set context metadata |
 
-Remove global instrumentation. Restores original behavior.
+### Control Agent
 
-```typescript
-import { uninstrument } from "aden";
+| Function | Description |
+|----------|-------------|
+| `createControlAgent(options)` | Create manual control agent |
+| `createControlAgentEmitter(agent)` | Create emitter from agent |
 
-uninstrument(); // Metrics no longer collected
-```
-
-### `updateInstrumentationOptions(updates)`
-
-Update options at runtime without re-instrumenting.
-
-```typescript
-import { updateInstrumentationOptions } from "aden";
-
-// Change emitter at runtime
-updateInstrumentationOptions({
-  emitMetric: newEmitter,
-});
-```
-
-### `makeMeteredOpenAI(client, options)`
-
-Wraps a single OpenAI client with metering. Use when you need different options per client.
-
-```typescript
-interface MeterOptions {
-  emitMetric: (event: MetricEvent) => void | Promise<void>;
-  trackToolCalls?: boolean; // default: true
-  trackCallRelationships?: boolean; // default: true
-  generateTraceId?: () => string; // default: crypto.randomUUID
-  beforeRequest?: BeforeRequestHook; // pre-request hook for rate limiting
-  requestMetadata?: Record<string, unknown>; // passed to beforeRequest
-}
-```
-
-### `withBudgetGuardrails(client, config)`
-
-Adds budget enforcement to a client.
+### Types
 
 ```typescript
-interface BudgetConfig {
-  maxInputTokens?: number;
-  onExceeded?: "throw" | "warn" | "truncate";
-  onExceededHandler?: (info: BudgetExceededInfo) => void;
-}
+// Main types
+import type {
+  MetricEvent,
+  MeterOptions,
+  ControlPolicy,
+  ControlDecision,
+  AlertEvent,
+  BeforeRequestResult,
+} from "aden";
 ```
 
-### `countInputTokens(client, model, input)`
-
-Count tokens before making a request.
-
-```typescript
-const tokens = await countInputTokens(client, "gpt-4.1", myPrompt);
-console.log(`Will use ${tokens} input tokens`);
-```
-
-### `normalizeUsage(usage)`
-
-Normalize usage from either API shape.
-
-```typescript
-const normalized = normalizeUsage(response.usage);
-// { input_tokens, output_tokens, cached_tokens, reasoning_tokens, ... }
-```
-
-### Context Tracking Functions
-
-#### `enterMeterContext(options?)`
-
-Enter a context that persists across awaits (zero-wrapper approach).
-
-```typescript
-enterMeterContext({
-  sessionId?: string,    // optional custom session ID
-  metadata?: Record<string, unknown>,
-});
-```
-
-#### `withMeterContextAsync(fn, options?)`
-
-Run an async function within an isolated session context.
-
-```typescript
-await withMeterContextAsync(async () => {
-  // Calls here share a session
-}, { metadata: { userId: "123" } });
-```
-
-#### `withAgent(name, fn)`
-
-Run a function within a named agent context.
-
-```typescript
-await withAgent("ResearchAgent", async () => {
-  // Calls here have "ResearchAgent" in agentStack
-});
-```
-
-#### `pushAgent(name)` / `popAgent()`
-
-Manually manage the agent stack for complex flows.
-
-#### `getCurrentContext()`
-
-Get the current meter context (creates one if none exists).
-
-```typescript
-interface MeterContext {
-  sessionId: string;
-  callSequence: number;
-  agentStack: string[];
-  parentTraceId?: string;
-  metadata?: Record<string, unknown>;
-}
-```
-
-#### `setContextMetadata(key, value)` / `getContextMetadata(key)`
-
-Get/set metadata on the current context.
-
-#### `extractCallSite()`
-
-Get the current call site (file, line, column, function).
-
-#### `extractAgentStack()`
-
-Get auto-detected agent names from the call stack.
+---
 
 ## Examples
 
@@ -621,15 +866,103 @@ Run examples with `npx tsx examples/<name>.ts`:
 
 | Example | Description |
 |---------|-------------|
-| `basic.ts` | Simple metering, streaming, budget guardrails |
-| `with-backend.ts` | Batched metrics to a backend service |
-| `cost-tracking.ts` | Per-request cost calculation with model pricing |
-| `multi-tenant.ts` | Usage attribution per tenant/user with tier limits |
-| `conversation-tracking.ts` | Multi-turn conversation token tracking |
-| `error-handling.ts` | Error classification and retry detection |
-| `reasoning-models.ts` | Reasoning token tracking for o-series models |
-| `express-middleware.ts` | Express.js integration with request context |
+| `openai-basic.ts` | Basic OpenAI instrumentation |
+| `anthropic-basic.ts` | Basic Anthropic instrumentation |
+| `gemini-basic.ts` | Basic Gemini instrumentation |
+| `control-actions.ts` | All control actions: block, throttle, degrade, alert |
+| `cost-control-local.ts` | Cost control without a server (offline mode) |
+| `vercel-ai-sdk.ts` | Vercel AI SDK integration |
+| `langchain-example.ts` | LangChain integration |
+| `multi-agent-example.ts` | Multi-agent tracking |
+
+---
+
+## Troubleshooting
+
+### Metrics not appearing
+
+1. **Check instrumentation order**: Call `instrument()` before creating SDK clients
+   ```typescript
+   // Correct
+   await instrument({ ... });
+   const openai = new OpenAI();
+
+   // Wrong - client created before instrumentation
+   const openai = new OpenAI();
+   await instrument({ ... });
+   ```
+
+2. **Verify SDK is passed**: Make sure you're passing the SDK class
+   ```typescript
+   import OpenAI from "openai";
+
+   await instrument({
+     sdks: { OpenAI },  // Pass the class, not an instance
+   });
+   ```
+
+3. **Check emitter is async-safe**: If using a custom emitter, ensure it handles promises correctly
+
+### Control server not connecting
+
+1. **Check environment variables**:
+   ```bash
+   echo $ADEN_API_KEY
+   echo $ADEN_API_URL
+   ```
+
+2. **Verify server is reachable**:
+   ```bash
+   curl $ADEN_API_URL/v1/control/health
+   ```
+
+3. **Enable debug logging**:
+   ```typescript
+   // Aden logs to console with [aden] prefix
+   // Check for connection errors
+   ```
+
+### Budget not enforcing
+
+1. **Ensure getContextId is set**: Budgets are per-context
+   ```typescript
+   await instrument({
+     apiKey: process.env.ADEN_API_KEY,
+     getContextId: () => getCurrentUserId(),  // Required!
+   });
+   ```
+
+2. **Check policy on server**:
+   ```bash
+   curl -H "Authorization: Bearer $ADEN_API_KEY" \
+     $ADEN_API_URL/v1/control/policy
+   ```
+
+### High memory usage
+
+1. **Enable batching**: Don't send events one-by-one
+   ```typescript
+   const transport = createHttpTransport({
+     batchSize: 100,
+     flushInterval: 10000,
+   });
+   ```
+
+2. **Disable relationship tracking** if not needed:
+   ```typescript
+   await instrument({
+     trackCallRelationships: false,
+   });
+   ```
+
+---
 
 ## License
 
 MIT
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
