@@ -352,7 +352,7 @@ await anthropic.messages.create({
 
 ```typescript
 const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = gemini.getGenerativeModel({ model: "gemini-pro" });
+const model = gemini.getGenerativeModel({ model: "gemini-2.0-flash" });
 
 await model.generateContent("Explain quantum computing");
 ```
@@ -822,6 +822,7 @@ const customerClient = makeMeteredOpenAI(new OpenAI(), {
 | `createBatchEmitter(handler, options?)` | Batch events |
 | `createMultiEmitter(emitters)` | Multiple destinations |
 | `createFilteredEmitter(emitter, filter)` | Filter events |
+| `createTransformEmitter(emitter, transform)` | Transform events |
 | `createJsonFileEmitter(options)` | Write to JSON file |
 | `createMemoryEmitter()` | Store in memory |
 | `createNoopEmitter()` | Discard events |
@@ -873,6 +874,8 @@ Run examples with `npx tsx examples/<name>.ts`:
 | `cost-control-local.ts` | Cost control without a server (offline mode) |
 | `vercel-ai-sdk.ts` | Vercel AI SDK integration |
 | `langchain-example.ts` | LangChain integration |
+| `llamaindex-example.ts` | LlamaIndex integration |
+| `mastra-example.ts` | Mastra framework integration |
 | `multi-agent-example.ts` | Multi-agent tracking |
 
 ---
