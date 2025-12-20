@@ -1,0 +1,30 @@
+# Source files (dist is published)
+src/
+tsconfig.json
+tsup.config.ts
+
+# Development files
+.env
+.env.*
+*.log
+
+# Examples and docs (not needed in npm package)
+examples/
+docs/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Test artifacts
+coverage/
+*.test.ts
+
+# Misc
+*.md
+!README.md

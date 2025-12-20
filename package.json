@@ -1,7 +1,7 @@
 {
   "name": "aden",
   "version": "0.1.0",
-  "description": "Aden Control Plane - Real-time cost control and observability for LLM SDKs",
+  "description": "LLM Observability & Cost Control SDK - Real-time usage tracking, budget enforcement, and cost control for OpenAI, Anthropic, and Gemini",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -35,10 +35,20 @@
     "billing",
     "observability",
     "tokens",
-    "cost"
+    "cost",
+    "budget",
+    "control"
   ],
-  "author": "",
+  "author": "Aden <hello@aden.dev>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adenhq/aden-ts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/adenhq/aden-ts/issues"
+  },
+  "homepage": "https://github.com/adenhq/aden-ts#readme",
   "peerDependencies": {
     "@anthropic-ai/sdk": ">=0.20.0",
     "@google/generative-ai": ">=0.1.0",
@@ -56,20 +66,11 @@
     }
   },
   "devDependencies": {
-    "@anthropic-ai/sdk": "^0.27.0",
-    "@google/generative-ai": "^0.21.0",
-    "@types/node": "^20.10.0",
-    "@types/ws": "^8.18.1",
-    "dotenv": "^17.2.3",
-    "openai": "^4.70.0",
-    "tsup": "^8.0.0",
-    "tsx": "^4.21.0",
-    "typescript": "^5.3.0"
-  },
-  "dependencies": {
     "@ai-sdk/anthropic": "^2.0.56",
     "@ai-sdk/google": "^2.0.49",
     "@ai-sdk/openai": "^2.0.88",
+    "@anthropic-ai/sdk": "^0.27.0",
+    "@google/generative-ai": "^0.21.0",
     "@langchain/anthropic": "^0.3.33",
     "@langchain/core": "^0.3.79",
     "@langchain/google-genai": "^0.2.18",
@@ -77,9 +78,18 @@
     "@llamaindex/anthropic": "^0.3.26",
     "@llamaindex/openai": "^0.4.22",
     "@mastra/core": "^0.24.9",
+    "@types/node": "^20.10.0",
+    "@types/ws": "^8.18.1",
     "ai": "^5.0.115",
+    "dotenv": "^17.2.3",
     "llamaindex": "^0.12.1",
-    "ws": "^8.18.3",
+    "openai": "^4.70.0",
+    "tsup": "^8.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.3.0",
     "zod": "^3.25.76"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
   }
 }
