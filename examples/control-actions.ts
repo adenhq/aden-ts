@@ -18,7 +18,13 @@
 
 import "dotenv/config";
 import OpenAI from "openai";
-import { instrument, uninstrument, createConsoleEmitter } from "../src/index.js";
+import {
+  instrument,
+  uninstrument,
+  createConsoleEmitter,
+  createMultiEmitter,
+  type MetricEvent,
+} from "../src/index.js";
 
 const USER_ID = "demo_user_control_actions";
 const apiKey = process.env.ADEN_API_KEY!;
@@ -26,6 +32,18 @@ const serverUrl = process.env.ADEN_API_URL || "http://localhost:8888";
 
 // Track alerts received
 const alertsReceived: Array<{ level: string; message: string; timestamp: Date }> = [];
+
+// Track budget locally (SDK tracks spend, server only provides policy)
+let localSpend = 0;
+const BUDGET_LIMIT = 0.002; // Must match the budget rule
+
+function getBudgetStatus(): { spend: number; limit: number; percent: number } {
+  return {
+    spend: localSpend,
+    limit: BUDGET_LIMIT,
+    percent: (localSpend / BUDGET_LIMIT) * 100,
+  };
+}
 
 const POLICY_ID = "default";
 
@@ -65,7 +83,7 @@ async function setupPolicy() {
     console.log("  Budget: $0.002 limit, kill on exceed");
   }
 
-  // 2. Add Throttle rule: 3 requests per minute
+  // 2. Add Throttle rule: 2 requests per minute (will throttle starting at request 3)
   const throttleRes = await fetch(`${serverUrl}/v1/control/policies/${POLICY_ID}/throttles`, {
     method: "POST",
     headers: {
@@ -74,14 +92,14 @@ async function setupPolicy() {
     },
     body: JSON.stringify({
       context_id: USER_ID,
-      requests_per_minute: 3,
+      requests_per_minute: 2,
       delay_ms: 2000, // 2 second delay when throttled
     }),
   });
   if (!throttleRes.ok) {
     console.log(`  Warning: Could not add throttle rule (${throttleRes.status})`);
   } else {
-    console.log("  Throttle: 3 req/min, 2s delay when exceeded");
+    console.log("  Throttle: 2 req/min, 2s delay when exceeded");
   }
 
   // 3. Add Degradation rule: gpt-4o -> gpt-4o-mini at 50% budget
@@ -161,23 +179,6 @@ async function setupPolicy() {
   }
 }
 
-const BUDGET_LIMIT = 0.002; // Must match the budget rule
-
-async function getBudgetStatus(): Promise<{ spend: number; limit: number; percent: number }> {
-  const res = await fetch(`${serverUrl}/v1/control/budget/${USER_ID}`, {
-    headers: { Authorization: `Bearer ${apiKey}` },
-  });
-  if (!res.ok) {
-    return { spend: 0, limit: BUDGET_LIMIT, percent: 0 };
-  }
-  const data = await res.json();
-  return {
-    spend: data.spent ?? 0,
-    limit: BUDGET_LIMIT,
-    percent: ((data.spent ?? 0) / BUDGET_LIMIT) * 100,
-  };
-}
-
 async function main() {
   console.log("\n" + "=".repeat(60));
   console.log("Aden SDK - Control Actions Demo");
@@ -197,10 +198,21 @@ async function main() {
   console.log("Initializing Aden instrumentation...");
   console.log("=".repeat(60) + "\n");
 
+  // Custom emitter to track spend locally
+  // Calculate cost from tokens (gpt-4o pricing: $2.50/1M input, $10/1M output)
+  const trackSpendEmitter = (event: MetricEvent) => {
+    const inputCost = event.input_tokens * 0.0000025; // $2.50 per 1M tokens
+    const outputCost = event.output_tokens * 0.00001; // $10 per 1M tokens
+    localSpend += inputCost + outputCost;
+  };
+
   await instrument({
     apiKey,
     serverUrl,
-    emitMetric: createConsoleEmitter({ pretty: true }),
+    emitMetric: createMultiEmitter([
+      createConsoleEmitter({ pretty: true }),
+      trackSpendEmitter,
+    ]),
     sdks: { OpenAI },
     getContextId: () => USER_ID,
     onAlert: (alert) => {
@@ -222,16 +234,14 @@ async function main() {
   const prompts = [
     "What is 2+2?",           // Request 1: ALLOW + ALERT (gpt-4o)
     "Say hello",              // Request 2: ALLOW + ALERT (gpt-4o)
-    "What color is the sky?", // Request 3: ALLOW + ALERT + likely DEGRADE (>50% budget)
-    "Count to 3",             // Request 4: THROTTLE (>3/min) + DEGRADE + possibly BLOCK
-    "Name a fruit",           // Request 5: THROTTLE + likely BLOCKED (>100% budget)
-    "Say bye",                // Request 6: THROTTLE + BLOCKED
-    "Last request",           // Request 7: THROTTLE + BLOCKED
+    "What color is the sky?", // Request 3: THROTTLE (>2/min) + ALERT
+    "Count to 3",             // Request 4: THROTTLE + ALERT + possibly DEGRADE (>50% budget)
+    "Name a fruit",           // Request 5: THROTTLE + possibly BLOCKED (>100% budget)
   ];
 
   for (let i = 0; i < prompts.length; i++) {
     const prompt = prompts[i];
-    const status = await getBudgetStatus();
+    const status = getBudgetStatus();
 
     console.log(`\n[Request ${i + 1}/${prompts.length}] "${prompt}"`);
     console.log(`   Budget: $${status.spend.toFixed(6)} / $${status.limit} (${status.percent.toFixed(1)}%)`);
@@ -280,7 +290,7 @@ async function main() {
   console.log("Summary");
   console.log("=".repeat(60));
 
-  const finalStatus = await getBudgetStatus();
+  const finalStatus = getBudgetStatus();
   console.log(`\nFinal Budget Status:`);
   console.log(`  User: ${USER_ID}`);
   console.log(`  Spent: $${finalStatus.spend.toFixed(6)}`);
@@ -293,11 +303,11 @@ async function main() {
   }
 
   console.log("\nControl Actions Demonstrated:");
-  console.log("  - allow: Requests 1-3 proceeded normally");
+  console.log("  - allow: Requests 1-2 proceeded normally");
   console.log("  - alert: Triggered for gpt-4* model usage");
-  console.log("  - throttle: Applied after 3 requests/min exceeded");
-  console.log("  - degrade: gpt-4o -> gpt-4o-mini after 50% budget");
-  console.log("  - block: Requests blocked after budget exceeded");
+  console.log("  - throttle: Applied after 2 requests/min exceeded (request 3+)");
+  console.log("  - degrade: gpt-4o -> gpt-4o-mini when budget > 50%");
+  console.log("  - block: Requests blocked when budget exceeded");
 
   await uninstrument();
   console.log("\nDemo complete!\n");
