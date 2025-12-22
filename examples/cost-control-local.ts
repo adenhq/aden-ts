@@ -47,22 +47,29 @@ class LocalPolicyEngine {
 
     // 2. Check budget limits
     if (this.policy.budgets && request.context_id) {
-      const budget = this.policy.budgets.find((b) => b.context_id === request.context_id);
+      // Match budget by id (which corresponds to context_id in requests)
+      const budget = this.policy.budgets.find((b) => b.id === request.context_id);
       if (budget) {
-        const currentSpend = this.budgetSpend.get(request.context_id) || 0;
+        const currentSpend = this.budgetSpend.get(request.context_id) || budget.spent;
         const projectedSpend = currentSpend + (request.estimated_cost ?? 0);
 
-        if (projectedSpend > budget.limit_usd) {
-          if (budget.action_on_exceed === "degrade" && budget.degrade_to_model) {
+        if (projectedSpend > budget.limit) {
+          // Map limitAction to ControlAction
+          const actionMap: Record<string, ControlAction> = {
+            kill: "block",
+            throttle: "throttle",
+            degrade: "degrade",
+          };
+          if (budget.limitAction === "degrade" && budget.degradeToModel) {
             return {
               action: "degrade",
-              reason: `Budget exceeded: $${projectedSpend.toFixed(4)} > $${budget.limit_usd}`,
-              degradeToModel: budget.degrade_to_model,
+              reason: `Budget exceeded: $${projectedSpend.toFixed(4)} > $${budget.limit}`,
+              degradeToModel: budget.degradeToModel,
             };
           }
           return {
-            action: budget.action_on_exceed as ControlAction,
-            reason: `Budget exceeded: $${projectedSpend.toFixed(4)} > $${budget.limit_usd}`,
+            action: actionMap[budget.limitAction] ?? "block",
+            reason: `Budget exceeded: $${projectedSpend.toFixed(4)} > $${budget.limit}`,
           };
         }
 
@@ -74,7 +81,7 @@ class LocalPolicyEngine {
               degrade.trigger === "budget_threshold" &&
               degrade.threshold_percent
             ) {
-              const usagePercent = (currentSpend / budget.limit_usd) * 100;
+              const usagePercent = (currentSpend / budget.limit) * 100;
               if (usagePercent >= degrade.threshold_percent) {
                 return {
                   action: "degrade",
@@ -171,17 +178,25 @@ async function runLocalDemo() {
     // Budget rules
     budgets: [
       {
-        context_id: "user_free_tier",
-        limit_usd: 0.01, // $0.01 for free tier
-        current_spend_usd: 0,
-        action_on_exceed: "block",
+        id: "user_free_tier",
+        name: "Free Tier User Budget",
+        type: "customer",
+        limit: 0.01, // $0.01 for free tier
+        spent: 0,
+        limitAction: "kill",
+        alerts: [{ threshold: 80, enabled: true }],
+        notifications: { inApp: true, email: false, emailRecipients: [], webhook: false },
       },
       {
-        context_id: "user_pro_tier",
-        limit_usd: 1.0, // $1.00 for pro tier
-        current_spend_usd: 0,
-        action_on_exceed: "degrade",
-        degrade_to_model: "gpt-4o-mini",
+        id: "user_pro_tier",
+        name: "Pro Tier User Budget",
+        type: "customer",
+        limit: 1.0, // $1.00 for pro tier
+        spent: 0,
+        limitAction: "degrade",
+        degradeToModel: "gpt-4o-mini",
+        alerts: [{ threshold: 80, enabled: true }],
+        notifications: { inApp: true, email: false, emailRecipients: [], webhook: false },
       },
     ],
 

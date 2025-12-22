@@ -27,40 +27,46 @@ const serverUrl = process.env.ADEN_API_URL || "http://localhost:8888";
 // Track alerts received
 const alertsReceived: Array<{ level: string; message: string; timestamp: Date }> = [];
 
+const POLICY_ID = "default";
+
 async function setupPolicy() {
   console.log("=".repeat(60));
   console.log("Setting up control policy...");
   console.log("=".repeat(60) + "\n");
 
-  // Clear existing policy
-  await fetch(`${serverUrl}/v1/control/policy`, {
+  // Clear existing rules from the policy
+  await fetch(`${serverUrl}/v1/control/policies/${POLICY_ID}/rules`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${apiKey}` },
   });
+  console.log("  Cleared existing rules");
 
-  // Reset budget
-  await fetch(`${serverUrl}/v1/control/budget/${USER_ID}/reset`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}` },
-  });
-
-  // 1. Budget with $0.002 limit - small enough to trigger all thresholds
-  await fetch(`${serverUrl}/v1/control/policy/budgets`, {
+  // 1. Add Budget rule: $0.002 limit - small enough to trigger all thresholds
+  const budgetRes = await fetch(`${serverUrl}/v1/control/policies/${POLICY_ID}/budgets`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      context_id: USER_ID,
-      limit_usd: 0.002, // $0.002 budget (~4-5 requests)
-      action_on_exceed: "block",
+      id: USER_ID,
+      name: "Demo User Budget",
+      type: "customer",
+      limit: 0.002, // $0.002 budget (~4-5 requests)
+      spent: 0,
+      limitAction: "kill",
+      alerts: [{ threshold: 80, enabled: true }],
+      notifications: { inApp: true, email: false, emailRecipients: [], webhook: false },
     }),
   });
-  console.log("  Budget: $0.002 limit, block on exceed");
+  if (!budgetRes.ok) {
+    console.log(`  Warning: Could not add budget rule (${budgetRes.status})`);
+  } else {
+    console.log("  Budget: $0.002 limit, kill on exceed");
+  }
 
-  // 2. Throttle rule: 3 requests per minute (will trigger after 3rd request)
-  await fetch(`${serverUrl}/v1/control/policy/throttles`, {
+  // 2. Add Throttle rule: 3 requests per minute
+  const throttleRes = await fetch(`${serverUrl}/v1/control/policies/${POLICY_ID}/throttles`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -72,10 +78,14 @@ async function setupPolicy() {
       delay_ms: 2000, // 2 second delay when throttled
     }),
   });
-  console.log("  Throttle: 3 req/min, 2s delay when exceeded");
+  if (!throttleRes.ok) {
+    console.log(`  Warning: Could not add throttle rule (${throttleRes.status})`);
+  } else {
+    console.log("  Throttle: 3 req/min, 2s delay when exceeded");
+  }
 
-  // 3. Degradation rule: gpt-4o -> gpt-4o-mini at 50% budget
-  await fetch(`${serverUrl}/v1/control/policy/degradations`, {
+  // 3. Add Degradation rule: gpt-4o -> gpt-4o-mini at 50% budget
+  const degradeRes = await fetch(`${serverUrl}/v1/control/policies/${POLICY_ID}/degradations`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -89,10 +99,14 @@ async function setupPolicy() {
       context_id: USER_ID,
     }),
   });
-  console.log("  Degradation: gpt-4o -> gpt-4o-mini at 50% budget");
+  if (!degradeRes.ok) {
+    console.log(`  Warning: Could not add degradation rule (${degradeRes.status})`);
+  } else {
+    console.log("  Degradation: gpt-4o -> gpt-4o-mini at 50% budget");
+  }
 
-  // 4. Alert rule: Warn when any gpt-4* model is used
-  await fetch(`${serverUrl}/v1/control/policy/alerts`, {
+  // 4. Add Alert rule: Warn when any gpt-4* model is used
+  const alertRes1 = await fetch(`${serverUrl}/v1/control/policies/${POLICY_ID}/alerts`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -105,10 +119,14 @@ async function setupPolicy() {
       message: "Expensive model (gpt-4*) is being used",
     }),
   });
-  console.log("  Alert: Warning when gpt-4* model is used");
+  if (!alertRes1.ok) {
+    console.log(`  Warning: Could not add alert rule (${alertRes1.status})`);
+  } else {
+    console.log("  Alert: Warning when gpt-4* model is used");
+  }
 
-  // 5. Alert rule: Critical when budget > 80%
-  await fetch(`${serverUrl}/v1/control/policy/alerts`, {
+  // 5. Add Alert rule: Critical when budget > 80%
+  const alertRes2 = await fetch(`${serverUrl}/v1/control/policies/${POLICY_ID}/alerts`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -122,15 +140,25 @@ async function setupPolicy() {
       message: "Budget nearly exhausted (>80%)",
     }),
   });
-  console.log("  Alert: Critical when budget > 80%\n");
+  if (!alertRes2.ok) {
+    console.log(`  Warning: Could not add alert rule (${alertRes2.status})`);
+  } else {
+    console.log("  Alert: Critical when budget > 80%");
+  }
+
+  console.log();
 
   // Get and display the full policy
-  const policyRes = await fetch(`${serverUrl}/v1/control/policy`, {
+  const policyRes = await fetch(`${serverUrl}/v1/control/policies/${POLICY_ID}`, {
     headers: { Authorization: `Bearer ${apiKey}` },
   });
-  const policy = await policyRes.json();
-  console.log("Full policy:");
-  console.log(JSON.stringify(policy, null, 2));
+  if (!policyRes.ok) {
+    console.log(`  Warning: Could not fetch policy (${policyRes.status})`);
+  } else {
+    const policy = await policyRes.json();
+    console.log("Full policy:");
+    console.log(JSON.stringify(policy, null, 2));
+  }
 }
 
 const BUDGET_LIMIT = 0.002; // Must match the budget rule
@@ -139,11 +167,14 @@ async function getBudgetStatus(): Promise<{ spend: number; limit: number; percen
   const res = await fetch(`${serverUrl}/v1/control/budget/${USER_ID}`, {
     headers: { Authorization: `Bearer ${apiKey}` },
   });
+  if (!res.ok) {
+    return { spend: 0, limit: BUDGET_LIMIT, percent: 0 };
+  }
   const data = await res.json();
   return {
-    spend: data.current_spend_usd,
+    spend: data.spent ?? 0,
     limit: BUDGET_LIMIT,
-    percent: (data.current_spend_usd / BUDGET_LIMIT) * 100,
+    percent: ((data.spent ?? 0) / BUDGET_LIMIT) * 100,
   };
 }
 
