@@ -12,6 +12,7 @@ import WebSocket from "ws";
 import type { MetricEvent } from "./types.js";
 import type {
   AlertEvent,
+  BudgetRule,
   ControlAgentOptions,
   ControlDecision,
   ControlEvent,
@@ -368,23 +369,25 @@ export class ControlAgent implements IControlAgent {
     }
 
     // 3. Check budget limits
-    if (policy.budgets && request.context_id) {
-      const budget = policy.budgets.find(b => b.context_id === request.context_id);
-      if (budget) {
-        const projectedSpend = budget.current_spend_usd + (request.estimated_cost ?? 0);
-        if (projectedSpend > budget.limit_usd) {
-          // Budget exceeded - block takes priority over throttle
-          if (budget.action_on_exceed === "degrade" && budget.degrade_to_model) {
+    if (policy.budgets) {
+      const applicableBudgets = this.findApplicableBudgets(policy.budgets, request);
+      for (const budget of applicableBudgets) {
+        const projectedSpend = budget.spent + (request.estimated_cost ?? 0);
+        if (projectedSpend > budget.limit) {
+          // Budget exceeded - check limitAction
+          if (budget.limitAction === "degrade" && budget.degradeToModel) {
             return {
               action: "degrade",
-              reason: `Budget exceeded: $${projectedSpend.toFixed(4)} > $${budget.limit_usd}`,
-              degradeToModel: budget.degrade_to_model,
+              reason: `Budget "${budget.name}" exceeded: $${projectedSpend.toFixed(4)} > $${budget.limit}`,
+              degradeToModel: budget.degradeToModel,
               ...(throttleInfo && { throttleDelayMs: throttleInfo.delayMs }),
             };
           }
+          // Map limitAction to ControlAction (kill -> block, throttle -> throttle)
+          const action = budget.limitAction === "kill" ? "block" : budget.limitAction;
           return {
-            action: budget.action_on_exceed,
-            reason: `Budget exceeded: $${projectedSpend.toFixed(4)} > $${budget.limit_usd}`,
+            action,
+            reason: `Budget "${budget.name}" exceeded: $${projectedSpend.toFixed(4)} > $${budget.limit}`,
           };
         }
 
@@ -396,11 +399,11 @@ export class ControlAgent implements IControlAgent {
               degrade.trigger === "budget_threshold" &&
               degrade.threshold_percent
             ) {
-              const usagePercent = (budget.current_spend_usd / budget.limit_usd) * 100;
+              const usagePercent = (budget.spent / budget.limit) * 100;
               if (usagePercent >= degrade.threshold_percent) {
                 return {
                   action: "degrade",
-                  reason: `Budget at ${usagePercent.toFixed(1)}% (threshold: ${degrade.threshold_percent}%)`,
+                  reason: `Budget "${budget.name}" at ${usagePercent.toFixed(1)}% (threshold: ${degrade.threshold_percent}%)`,
                   degradeToModel: degrade.to_model,
                   ...(throttleInfo && { throttleDelayMs: throttleInfo.delayMs }),
                 };
@@ -500,11 +503,13 @@ export class ControlAgent implements IControlAgent {
         return true;
 
       case "budget_threshold":
-        if (alert.threshold_percent && request.context_id && policy.budgets) {
-          const budget = policy.budgets.find(b => b.context_id === request.context_id);
-          if (budget) {
-            const usagePercent = (budget.current_spend_usd / budget.limit_usd) * 100;
-            return usagePercent >= alert.threshold_percent;
+        if (alert.threshold_percent && policy.budgets) {
+          const applicableBudgets = this.findApplicableBudgets(policy.budgets, request);
+          for (const budget of applicableBudgets) {
+            const usagePercent = (budget.spent / budget.limit) * 100;
+            if (usagePercent >= alert.threshold_percent) {
+              return true;
+            }
           }
         }
         return false;
@@ -528,6 +533,67 @@ export class ControlAgent implements IControlAgent {
       if (!regex.test(request.model)) return false;
     }
     return true;
+  }
+
+  /**
+   * Find budgets that apply to the given request based on budget type
+   */
+  private findApplicableBudgets(budgets: BudgetRule[], request: ControlRequest): BudgetRule[] {
+    const result: BudgetRule[] = [];
+    const metadata = request.metadata || {};
+
+    for (const budget of budgets) {
+      switch (budget.type) {
+        case "global":
+          // Global budgets always apply
+          result.push(budget);
+          break;
+
+        case "agent":
+          // Match by agent_id in metadata
+          if (metadata.agent_id && budget.id.includes(String(metadata.agent_id))) {
+            result.push(budget);
+          }
+          break;
+
+        case "tenant":
+          // Match by tenant_id in metadata
+          if (metadata.tenant_id && budget.id.includes(String(metadata.tenant_id))) {
+            result.push(budget);
+          }
+          break;
+
+        case "customer":
+          // Match by customer_id in metadata or context_id
+          if (
+            (metadata.customer_id && budget.id.includes(String(metadata.customer_id))) ||
+            (request.context_id && budget.id.includes(request.context_id))
+          ) {
+            result.push(budget);
+          }
+          break;
+
+        case "feature":
+          // Match by feature in metadata
+          if (metadata.feature && budget.id.includes(String(metadata.feature))) {
+            result.push(budget);
+          }
+          break;
+
+        case "tag":
+          // Match if request has any of the budget's tags
+          if (budget.tags && Array.isArray(metadata.tags)) {
+            const requestTags = metadata.tags as string[];
+            const hasMatchingTag = budget.tags.some((tag) => requestTags.includes(tag));
+            if (hasMatchingTag) {
+              result.push(budget);
+            }
+          }
+          break;
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -575,11 +641,10 @@ export class ControlAgent implements IControlAgent {
     if (this.cachedPolicy?.budgets && event.total_tokens > 0) {
       // Rough cost estimation (should be refined with actual pricing)
       const estimatedCost = this.estimateCost(event);
-      const contextId = this.options.getContextId?.();
-      if (contextId) {
-        const budget = this.cachedPolicy.budgets.find(b => b.context_id === contextId);
-        if (budget) {
-          budget.current_spend_usd += estimatedCost;
+      // Update all global budgets (local tracking only - server is source of truth)
+      for (const budget of this.cachedPolicy.budgets) {
+        if (budget.type === "global") {
+          budget.spent += estimatedCost;
         }
       }
     }

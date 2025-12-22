@@ -137,19 +137,63 @@ export type ServerEvent =
 // =============================================================================
 
 /**
+ * Budget type - what scope the budget applies to
+ */
+export type BudgetType = "global" | "agent" | "tenant" | "customer" | "feature" | "tag";
+
+/**
+ * Limit action - what to do when budget is exceeded
+ */
+export type LimitAction = "kill" | "throttle" | "degrade";
+
+/**
+ * Budget alert configuration
+ */
+export interface BudgetAlert {
+  /** Threshold percentage (0-100) */
+  threshold: number;
+  /** Whether this alert is enabled */
+  enabled: boolean;
+}
+
+/**
+ * Budget notification settings
+ */
+export interface BudgetNotifications {
+  /** Show in-app notifications */
+  inApp: boolean;
+  /** Send email notifications */
+  email: boolean;
+  /** Email recipients */
+  emailRecipients: string[];
+  /** Send webhook notifications */
+  webhook: boolean;
+}
+
+/**
  * Budget rule - limits spend per context
  */
 export interface BudgetRule {
-  /** Context ID this rule applies to (e.g., user_id, session_id) */
-  context_id: string;
+  /** Unique identifier for this budget */
+  id: string;
+  /** Human-readable name */
+  name: string;
+  /** Budget type/scope */
+  type: BudgetType;
+  /** Tags for tag-based budgets (required when type is 'tag') */
+  tags?: string[];
   /** Budget limit in USD */
-  limit_usd: number;
-  /** Current spend in USD (server tracks this) */
-  current_spend_usd: number;
+  limit: number;
+  /** Current spend in USD */
+  spent: number;
   /** Action to take when budget is exceeded */
-  action_on_exceed: ControlAction;
-  /** If action is "degrade", switch to this model */
-  degrade_to_model?: string;
+  limitAction: LimitAction;
+  /** If limitAction is "degrade", switch to this model */
+  degradeToModel?: string;
+  /** Alert thresholds */
+  alerts: BudgetAlert[];
+  /** Notification settings */
+  notifications: BudgetNotifications;
 }
 
 /**
