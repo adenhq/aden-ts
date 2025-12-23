@@ -35,7 +35,7 @@ const alertsReceived: Array<{ level: string; message: string; timestamp: Date }>
 
 // Track budget locally (SDK tracks spend, server only provides policy)
 let localSpend = 0;
-const BUDGET_LIMIT = 0.002; // Must match the budget rule
+const BUDGET_LIMIT = 0.0003; // Small budget to demonstrate all actions in 5 requests
 
 function getBudgetStatus(): { spend: number; limit: number; percent: number } {
   return {
@@ -70,7 +70,7 @@ async function setupPolicy() {
       id: USER_ID,
       name: "Demo User Budget",
       type: "customer",
-      limit: 0.002, // $0.002 budget (~4-5 requests)
+      limit: BUDGET_LIMIT, // Small budget to hit all thresholds
       spent: 0,
       limitAction: "kill",
       alerts: [{ threshold: 80, enabled: true }],
@@ -80,7 +80,7 @@ async function setupPolicy() {
   if (!budgetRes.ok) {
     console.log(`  Warning: Could not add budget rule (${budgetRes.status})`);
   } else {
-    console.log("  Budget: $0.002 limit, kill on exceed");
+    console.log(`  Budget: $${BUDGET_LIMIT} limit, kill on exceed`);
   }
 
   // 2. Add Throttle rule: 2 requests per minute (will throttle starting at request 3)
@@ -232,11 +232,11 @@ async function main() {
   console.log("=".repeat(60));
 
   const prompts = [
-    "What is 2+2?",           // Request 1: ALLOW + ALERT (gpt-4o)
-    "Say hello",              // Request 2: ALLOW + ALERT (gpt-4o)
-    "What color is the sky?", // Request 3: THROTTLE (>2/min) + ALERT
-    "Count to 3",             // Request 4: THROTTLE + ALERT + possibly DEGRADE (>50% budget)
-    "Name a fruit",           // Request 5: THROTTLE + possibly BLOCKED (>100% budget)
+    "What is 2+2?",           // Request 1: ALLOW + ALERT (~35% budget)
+    "Say hello",              // Request 2: ALLOW + ALERT + DEGRADE (>50% budget)
+    "What color is the sky?", // Request 3: THROTTLE + ALERT + DEGRADE + possibly BLOCKED (>100%)
+    "Count to 3",             // Request 4: THROTTLE + BLOCKED (budget exceeded)
+    "Name a fruit",           // Request 5: THROTTLE + BLOCKED
   ];
 
   for (let i = 0; i < prompts.length; i++) {
@@ -303,11 +303,11 @@ async function main() {
   }
 
   console.log("\nControl Actions Demonstrated:");
-  console.log("  - allow: Requests 1-2 proceeded normally");
+  console.log("  - allow: Request 1 proceeded normally");
   console.log("  - alert: Triggered for gpt-4* model usage");
+  console.log("  - degrade: gpt-4o -> gpt-4o-mini when budget > 50% (request 2+)");
   console.log("  - throttle: Applied after 2 requests/min exceeded (request 3+)");
-  console.log("  - degrade: gpt-4o -> gpt-4o-mini when budget > 50%");
-  console.log("  - block: Requests blocked when budget exceeded");
+  console.log("  - block: Requests blocked when budget > 100%");
 
   await uninstrument();
   console.log("\nDemo complete!\n");

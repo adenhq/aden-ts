@@ -639,12 +639,19 @@ export class ControlAgent implements IControlAgent {
 
     // Update local budget tracking
     if (this.cachedPolicy?.budgets && event.total_tokens > 0) {
-      // Rough cost estimation (should be refined with actual pricing)
       const estimatedCost = this.estimateCost(event);
-      // Update all global budgets (local tracking only - server is source of truth)
+      const contextId = this.options.getContextId?.();
+
       for (const budget of this.cachedPolicy.budgets) {
+        // Update global budgets
         if (budget.type === "global") {
           budget.spent += estimatedCost;
+        }
+        // Update customer budgets that match the context_id
+        else if (budget.type === "customer" && contextId) {
+          if (budget.id === contextId || budget.id.includes(contextId)) {
+            budget.spent += estimatedCost;
+          }
         }
       }
     }
@@ -652,11 +659,12 @@ export class ControlAgent implements IControlAgent {
 
   /**
    * Estimate cost from a metric event
+   * Uses gpt-4o pricing as default: $2.50/1M input, $10/1M output
    */
   private estimateCost(event: MetricEvent): number {
-    // Simplified cost estimation - real implementation would use model-specific pricing
-    const inputCost = event.input_tokens * 0.00001; // $0.01 per 1K tokens (rough)
-    const outputCost = event.output_tokens * 0.00003; // $0.03 per 1K tokens (rough)
+    // gpt-4o pricing (default for estimation)
+    const inputCost = event.input_tokens * 0.0000025; // $2.50 per 1M tokens
+    const outputCost = event.output_tokens * 0.00001; // $10 per 1M tokens
     return inputCost + outputCost;
   }
 
