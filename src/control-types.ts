@@ -352,6 +352,116 @@ export interface ControlAgentOptions {
    * Use this for logging, notifications, or monitoring.
    */
   onAlert?: (alert: AlertEvent) => void | Promise<void>;
+
+  // ==========================================================================
+  // Hybrid Enforcement Options
+  // ==========================================================================
+
+  /**
+   * Enable hybrid enforcement (local + server-side validation).
+   * When enabled, budgets above the threshold are validated with the server.
+   * Default: false
+   */
+  enableHybridEnforcement?: boolean;
+
+  /**
+   * Budget usage threshold (percentage) at which to start server validation.
+   * Requests below this threshold use local-only enforcement.
+   * Default: 80
+   */
+  serverValidationThreshold?: number;
+
+  /**
+   * Timeout for server validation requests (ms).
+   * Default: 2000
+   */
+  serverValidationTimeoutMs?: number;
+
+  /**
+   * Enable adaptive threshold adjustment based on remaining budget.
+   * When enabled, force validation when remaining budget is critically low.
+   * Default: true
+   */
+  adaptiveThresholdEnabled?: boolean;
+
+  /**
+   * Minimum remaining budget (USD) that triggers forced server validation.
+   * Only applies when adaptiveThresholdEnabled is true.
+   * Default: 1.0
+   */
+  adaptiveMinRemainingUsd?: number;
+
+  /**
+   * Enable probabilistic sampling for server validation.
+   * Reduces latency impact by validating a fraction of requests.
+   * Default: true
+   */
+  samplingEnabled?: boolean;
+
+  /**
+   * Base sampling rate at the threshold (0-1).
+   * This is the minimum rate used at serverValidationThreshold.
+   * Default: 0.1 (10%)
+   */
+  samplingBaseRate?: number;
+
+  /**
+   * Budget usage percentage at which to validate all requests.
+   * Between threshold and this value, sampling rate interpolates to 1.0.
+   * Default: 95
+   */
+  samplingFullValidationPercent?: number;
+
+  /**
+   * Maximum expected overspend percentage beyond the soft limit.
+   * Acts as a hard limit safety net to prevent runaway spending.
+   * Default: 10 (allowing up to 110% of budget)
+   */
+  maxExpectedOverspendPercent?: number;
+}
+
+/**
+ * Budget validation request sent to server
+ */
+export interface BudgetValidationRequest {
+  /** Budget ID to validate */
+  budgetId: string;
+  /** Estimated cost of the pending request */
+  estimatedCost: number;
+  /** Local spend tracking (server uses max of local vs server) */
+  localSpend?: number;
+  /** Budget context */
+  context?: {
+    type?: string;
+    value?: string;
+    tags?: string[];
+  };
+}
+
+/**
+ * Budget validation response from server
+ */
+export interface BudgetValidationResponse {
+  /** Whether the request is allowed */
+  allowed: boolean;
+  /** Action to take */
+  action: "allow" | "block" | "degrade" | "throttle";
+  /** Authoritative spend from server (TSDB) */
+  authoritativeSpend: number;
+  /** Budget limit */
+  budgetLimit: number;
+  /** Current usage percentage */
+  usagePercent: number;
+  /** Policy version */
+  policyVersion: string;
+  /** Updated spend after this request */
+  updatedSpend: number;
+  /** Reason for the decision */
+  reason?: string;
+  /** Projected usage percentage */
+  projectedPercent?: number;
+  /** Model to degrade to (if action is "degrade") */
+  degradeToModel?: string;
 }
 
 // =============================================================================

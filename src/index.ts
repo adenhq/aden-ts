@@ -27,6 +27,14 @@ export {
 } from "./instrument.js";
 export type { InstrumentationResult } from "./instrument.js";
 
+// Google GenAI instrumentation (new SDK for Google ADK)
+export {
+  instrumentGenai,
+  uninstrumentGenai,
+  isGenaiInstrumented,
+  getGenaiOptions,
+} from "./instrument-genai.js";
+
 // Context tracking for call relationships
 export {
   // Context management
@@ -53,7 +61,14 @@ export {
 export type { MeterContext, CallRelationship } from "./context.js";
 
 // Usage normalization utilities
-export { normalizeUsage, emptyUsage, mergeUsage } from "./normalize.js";
+export {
+  normalizeUsage,
+  normalizeOpenAIUsage,
+  normalizeAnthropicUsage,
+  normalizeGeminiUsage,
+  emptyUsage,
+  mergeUsage,
+} from "./normalize.js";
 
 // Budget guardrails
 export {
@@ -75,6 +90,10 @@ export {
   createJsonFileEmitter,
 } from "./emitters.js";
 export type { JsonFileEmitterOptions } from "./emitters.js";
+
+// File-based logging
+export { MetricFileLogger, createFileEmitter } from "./file-logger.js";
+export type { MetricFileLoggerOptions } from "./file-logger.js";
 
 // HTTP transport
 export {
@@ -140,6 +159,16 @@ export { RequestCancelledError } from "./types.js";
 // Constants
 export { DEFAULT_CONTROL_SERVER, getControlServerUrl } from "./types.js";
 
+// Logging configuration
+export {
+  configureLogging,
+  getLoggingConfig,
+  resetLoggingConfig,
+  logger,
+  metricsLogger,
+} from "./logging.js";
+export type { LogLevel, LoggingConfig, LogHandler } from "./logging.js";
+
 // Control Agent (bidirectional server communication)
 export {
   ControlAgent,
@@ -161,4 +190,7 @@ export type {
   AlertRule,
   AlertEvent,
   HeartbeatEvent,
+  // Hybrid enforcement types
+  BudgetValidationRequest,
+  BudgetValidationResponse,
 } from "./control-types.js";

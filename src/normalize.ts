@@ -3,7 +3,7 @@ import type { NormalizedUsage } from "./types.js";
 /**
  * Raw usage object from OpenAI API (either shape)
  */
-interface RawUsage {
+interface RawOpenAIUsage {
   // Responses API shape
   input_tokens?: number;
   output_tokens?: number;
@@ -28,35 +28,76 @@ interface RawUsage {
 }
 
 /**
- * Normalizes usage data from both OpenAI API response shapes into a consistent format.
+ * Raw usage object from Anthropic API
+ */
+interface RawAnthropicUsage {
+  input_tokens?: number;
+  output_tokens?: number;
+  cache_read_input_tokens?: number;
+  cache_creation_input_tokens?: number;
+}
+
+/**
+ * Raw usage metadata from Gemini API
+ */
+interface RawGeminiUsage {
+  // camelCase (SDK)
+  promptTokenCount?: number;
+  candidatesTokenCount?: number;
+  totalTokenCount?: number;
+  cachedContentTokenCount?: number;
+  // snake_case (REST)
+  prompt_token_count?: number;
+  candidates_token_count?: number;
+  total_token_count?: number;
+  cached_content_token_count?: number;
+}
+
+/**
+ * Helper to convert an object to a plain dictionary for easier field access.
+ */
+function toDict(obj: unknown): Record<string, unknown> {
+  if (!obj) return {};
+  if (typeof obj !== "object") return {};
+  // Handle objects with toJSON or model_dump methods (Pydantic-like)
+  if ("model_dump" in obj && typeof (obj as { model_dump: unknown }).model_dump === "function") {
+    return (obj as { model_dump: () => Record<string, unknown> }).model_dump();
+  }
+  return obj as Record<string, unknown>;
+}
+
+/**
+ * Normalizes usage data from OpenAI API responses.
  *
- * The OpenAI API returns usage in two different shapes depending on the endpoint:
+ * Handles both API shapes:
  * - Responses API: uses `input_tokens` / `output_tokens`
  * - Chat Completions API: uses `prompt_tokens` / `completion_tokens`
- *
- * This function handles both and normalizes into our standard schema.
  *
  * @param usage - Raw usage object from OpenAI API response
  * @returns Normalized usage metrics, or null if no usage data provided
  */
-export function normalizeUsage(usage: unknown): NormalizedUsage | null {
+export function normalizeOpenAIUsage(usage: unknown): NormalizedUsage | null {
   if (!usage || typeof usage !== "object") {
     return null;
   }
 
-  const raw = usage as RawUsage;
+  const raw = toDict(usage) as RawOpenAIUsage;
 
   // Check if this is Responses API shape (input_tokens/output_tokens)
   if ("input_tokens" in raw || "output_tokens" in raw) {
     const input = raw.input_tokens ?? 0;
     const output = raw.output_tokens ?? 0;
 
+    // Extract nested details
+    const inputDetails = (raw.input_tokens_details ?? {}) as Record<string, unknown>;
+    const outputDetails = (raw.output_tokens_details ?? {}) as Record<string, unknown>;
+
     return {
       input_tokens: input,
       output_tokens: output,
       total_tokens: raw.total_tokens ?? input + output,
-      reasoning_tokens: raw.output_tokens_details?.reasoning_tokens ?? 0,
-      cached_tokens: raw.input_tokens_details?.cached_tokens ?? 0,
+      reasoning_tokens: (outputDetails.reasoning_tokens as number) ?? 0,
+      cached_tokens: (inputDetails.cached_tokens as number) ?? 0,
       accepted_prediction_tokens: 0,
       rejected_prediction_tokens: 0,
     };
@@ -66,17 +107,124 @@ export function normalizeUsage(usage: unknown): NormalizedUsage | null {
   const prompt = raw.prompt_tokens ?? 0;
   const completion = raw.completion_tokens ?? 0;
 
+  // Extract nested details
+  const promptDetails = (raw.prompt_tokens_details ?? {}) as Record<string, unknown>;
+  const completionDetails = (raw.completion_tokens_details ?? {}) as Record<string, unknown>;
+
   return {
     input_tokens: prompt,
     output_tokens: completion,
     total_tokens: raw.total_tokens ?? prompt + completion,
-    reasoning_tokens: raw.completion_tokens_details?.reasoning_tokens ?? 0,
-    cached_tokens: raw.prompt_tokens_details?.cached_tokens ?? 0,
-    accepted_prediction_tokens:
-      raw.completion_tokens_details?.accepted_prediction_tokens ?? 0,
-    rejected_prediction_tokens:
-      raw.completion_tokens_details?.rejected_prediction_tokens ?? 0,
+    reasoning_tokens: (completionDetails.reasoning_tokens as number) ?? 0,
+    cached_tokens: (promptDetails.cached_tokens as number) ?? 0,
+    accepted_prediction_tokens: (completionDetails.accepted_prediction_tokens as number) ?? 0,
+    rejected_prediction_tokens: (completionDetails.rejected_prediction_tokens as number) ?? 0,
   };
+}
+
+/**
+ * Normalizes usage data from Anthropic API responses.
+ *
+ * Anthropic Messages API usage fields:
+ * - input_tokens: Input tokens consumed
+ * - output_tokens: Output tokens generated
+ * - cache_read_input_tokens: Tokens served from cache (optional)
+ * - cache_creation_input_tokens: Tokens used to create cache (optional)
+ *
+ * @param usage - Raw usage object from Anthropic API response
+ * @returns Normalized usage metrics, or null if no usage data provided
+ */
+export function normalizeAnthropicUsage(usage: unknown): NormalizedUsage | null {
+  if (!usage || typeof usage !== "object") {
+    return null;
+  }
+
+  const raw = toDict(usage) as RawAnthropicUsage;
+
+  const inputTokens = raw.input_tokens ?? 0;
+  const outputTokens = raw.output_tokens ?? 0;
+
+  return {
+    input_tokens: inputTokens,
+    output_tokens: outputTokens,
+    total_tokens: inputTokens + outputTokens,
+    cached_tokens: raw.cache_read_input_tokens ?? 0,
+    reasoning_tokens: 0, // Anthropic doesn't have reasoning tokens yet
+    accepted_prediction_tokens: 0,
+    rejected_prediction_tokens: 0,
+  };
+}
+
+/**
+ * Normalizes usage data from Google Gemini API responses.
+ *
+ * Gemini GenerateContent usage_metadata fields:
+ * - promptTokenCount: Input tokens
+ * - candidatesTokenCount: Output tokens
+ * - totalTokenCount: Total tokens
+ * - cachedContentTokenCount: Cached tokens (optional)
+ *
+ * @param usageMetadata - Raw usage_metadata from Gemini API response
+ * @returns Normalized usage metrics, or null if no usage data provided
+ */
+export function normalizeGeminiUsage(usageMetadata: unknown): NormalizedUsage | null {
+  if (!usageMetadata || typeof usageMetadata !== "object") {
+    return null;
+  }
+
+  const raw = toDict(usageMetadata) as RawGeminiUsage;
+
+  // Handle both camelCase (SDK) and snake_case (REST) field names
+  const inputTokens = raw.promptTokenCount ?? raw.prompt_token_count ?? 0;
+  const outputTokens = raw.candidatesTokenCount ?? raw.candidates_token_count ?? 0;
+  const totalTokens = raw.totalTokenCount ?? raw.total_token_count ?? inputTokens + outputTokens;
+  const cachedTokens = raw.cachedContentTokenCount ?? raw.cached_content_token_count ?? 0;
+
+  return {
+    input_tokens: inputTokens,
+    output_tokens: outputTokens,
+    total_tokens: totalTokens,
+    cached_tokens: cachedTokens,
+    reasoning_tokens: 0, // Gemini doesn't expose reasoning tokens
+    accepted_prediction_tokens: 0,
+    rejected_prediction_tokens: 0,
+  };
+}
+
+/**
+ * Normalizes usage data from any supported LLM provider.
+ *
+ * @param usage - Raw usage object from API response
+ * @param provider - The provider the usage came from (default: "openai")
+ * @returns Normalized usage metrics, or null if no usage data provided
+ *
+ * @example
+ * ```typescript
+ * // OpenAI
+ * const response = await openai.chat.completions.create({ ... });
+ * const normalized = normalizeUsage(response.usage, "openai");
+ *
+ * // Anthropic
+ * const response = await anthropic.messages.create({ ... });
+ * const normalized = normalizeUsage(response.usage, "anthropic");
+ *
+ * // Gemini
+ * const response = await model.generateContent({ ... });
+ * const normalized = normalizeUsage(response.usageMetadata, "gemini");
+ * ```
+ */
+export function normalizeUsage(
+  usage: unknown,
+  provider: "openai" | "anthropic" | "gemini" = "openai"
+): NormalizedUsage | null {
+  switch (provider) {
+    case "anthropic":
+      return normalizeAnthropicUsage(usage);
+    case "gemini":
+      return normalizeGeminiUsage(usage);
+    default:
+      return normalizeOpenAIUsage(usage);
+  }
 }
 
 /**

@@ -30,12 +30,16 @@ const response = await openai.chat.completions.create({
 - [Cost Control](#cost-control)
   - [Setting Up the Control Server](#setting-up-the-control-server)
   - [Control Actions](#control-actions)
+  - [Hybrid Enforcement](#hybrid-enforcement)
 - [Multi-Provider Support](#multi-provider-support)
 - [What Metrics Are Collected?](#what-metrics-are-collected)
 - [Metric Emitters](#metric-emitters)
+  - [File-based Logging](#file-based-logging)
+- [Usage Normalization](#usage-normalization)
 - [Call Relationship Tracking](#call-relationship-tracking)
 - [Framework Integrations](#framework-integrations)
 - [Advanced Configuration](#advanced-configuration)
+  - [Logging Configuration](#logging-configuration)
 - [API Reference](#api-reference)
 - [Examples](#examples)
 - [Troubleshooting](#troubleshooting)
@@ -52,13 +56,13 @@ Building with LLMs is expensive and unpredictable:
 
 Aden solves these problems:
 
-| Problem | Aden Solution |
-|---------|---------------|
-| No visibility into LLM usage | Automatic metric collection for every API call |
-| Unpredictable costs | Real-time budget tracking and enforcement |
-| No per-user limits | Context-based controls (per user, per feature, per tenant) |
-| Expensive models used unnecessarily | Automatic model degradation when approaching limits |
-| Alert fatigue | Smart alerts based on spend thresholds |
+| Problem                             | Aden Solution                                              |
+| ----------------------------------- | ---------------------------------------------------------- |
+| No visibility into LLM usage        | Automatic metric collection for every API call             |
+| Unpredictable costs                 | Real-time budget tracking and enforcement                  |
+| No per-user limits                  | Context-based controls (per user, per feature, per tenant) |
+| Expensive models used unnecessarily | Automatic model degradation when approaching limits        |
+| Alert fatigue                       | Smart alerts based on spend thresholds                     |
 
 ---
 
@@ -74,7 +78,8 @@ You'll also need at least one LLM SDK:
 # Install the SDKs you use
 npm install openai                  # For OpenAI/GPT models
 npm install @anthropic-ai/sdk       # For Anthropic/Claude models
-npm install @google/generative-ai   # For Google Gemini models
+npm install @google/generative-ai   # For Google Gemini models (classic SDK)
+npm install @google/genai           # For Google GenAI (new SDK for Google ADK)
 ```
 
 ---
@@ -156,8 +161,8 @@ import { instrument } from "aden";
 import OpenAI from "openai";
 
 await instrument({
-  apiKey: process.env.ADEN_API_KEY,        // Your Aden API key
-  serverUrl: process.env.ADEN_API_URL,     // Control server URL
+  apiKey: process.env.ADEN_API_KEY, // Your Aden API key
+  serverUrl: process.env.ADEN_API_URL, // Control server URL
   sdks: { OpenAI },
 });
 ```
@@ -187,12 +192,14 @@ Aden's cost control system lets you set budgets, throttle requests, and automati
 1. **Get an API key** from your Aden control server (or deploy your own)
 
 2. **Set environment variables**:
+
    ```bash
    ADEN_API_KEY=your-api-key
-   ADEN_API_URL=https://your-control-server.com  # Optional, has default
+   ADEN_API_URL=https://kube.acho.io  # Optional, has default
    ```
 
 3. **Instrument with cost control**:
+
    ```typescript
    import { instrument } from "aden";
    import OpenAI from "openai";
@@ -216,13 +223,13 @@ Aden's cost control system lets you set budgets, throttle requests, and automati
 
 The control server can apply these actions to requests:
 
-| Action | What It Does | Use Case |
-|--------|--------------|----------|
-| **allow** | Request proceeds normally | Default when within limits |
-| **block** | Request is rejected with an error | Budget exhausted |
-| **throttle** | Request is delayed before proceeding | Rate limiting |
-| **degrade** | Request uses a cheaper model | Approaching budget limit |
-| **alert** | Request proceeds, notification sent | Warning threshold reached |
+| Action       | What It Does                         | Use Case                   |
+| ------------ | ------------------------------------ | -------------------------- |
+| **allow**    | Request proceeds normally            | Default when within limits |
+| **block**    | Request is rejected with an error    | Budget exhausted           |
+| **throttle** | Request is delayed before proceeding | Rate limiting              |
+| **degrade**  | Request uses a cheaper model         | Approaching budget limit   |
+| **alert**    | Request proceeds, notification sent  | Warning threshold reached  |
 
 ### Example: Budget with Degradation
 
@@ -284,6 +291,45 @@ await openai.chat.completions.create({ model: "gpt-4o", ... });
 // → Throws RequestCancelledError: "Budget exceeded"
 ```
 
+### Hybrid Enforcement
+
+For high-concurrency scenarios, enable hybrid enforcement to combine fast local checks with accurate server-side validation:
+
+```typescript
+const agent = createControlAgent({
+  serverUrl: "https://kube.acho.io",
+  apiKey: process.env.ADEN_API_KEY,
+
+  // Enable hybrid enforcement
+  enableHybridEnforcement: true,
+
+  // Start server validation at 80% budget usage (default)
+  serverValidationThreshold: 80,
+
+  // Timeout for server validation (default: 2000ms)
+  serverValidationTimeoutMs: 2000,
+
+  // Force validation when remaining budget < $1 (default)
+  adaptiveThresholdEnabled: true,
+  adaptiveMinRemainingUsd: 1.0,
+
+  // Probabilistic sampling to reduce latency
+  samplingEnabled: true,
+  samplingBaseRate: 0.1, // 10% at threshold
+  samplingFullValidationPercent: 95, // 100% at 95% usage
+
+  // Hard limit safety net (110% = soft limit + 10% buffer)
+  maxExpectedOverspendPercent: 10,
+});
+```
+
+**How it works:**
+
+- **Below threshold (0-80%)**: Fast local-only enforcement
+- **At threshold (80-95%)**: Probabilistic server validation (10% → 100%)
+- **Above 95%**: All requests validated with server
+- **Hard limit**: Always block if projected spend exceeds 110% of budget
+
 ---
 
 ## Multi-Provider Support
@@ -291,7 +337,7 @@ await openai.chat.completions.create({ model: "gpt-4o", ... });
 Aden works with all major LLM providers:
 
 ```typescript
-import { instrument } from "aden";
+import { instrument, instrumentGenai } from "aden";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -305,6 +351,9 @@ await instrument({
     GoogleGenerativeAI,
   },
 });
+
+// Also instrument the new Google GenAI SDK (for Google ADK)
+await instrumentGenai({ emitMetric: myEmitter });
 
 // All SDKs are now tracked
 const openai = new OpenAI();
@@ -348,13 +397,32 @@ await anthropic.messages.create({
 });
 ```
 
-### Google Gemini
+### Google Gemini (Classic SDK)
 
 ```typescript
 const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = gemini.getGenerativeModel({ model: "gemini-2.0-flash" });
 
 await model.generateContent("Explain quantum computing");
+```
+
+### Google GenAI (New SDK)
+
+The new `@google/genai` SDK is used by Google ADK and other modern Google AI tools:
+
+```typescript
+import { instrumentGenai } from "aden";
+import { GoogleGenAI } from "@google/genai";
+
+// Instrument the new SDK
+await instrumentGenai({ emitMetric: myEmitter });
+
+// Use as normal
+const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const response = await client.models.generateContent({
+  model: "gemini-2.0-flash",
+  contents: "Explain quantum computing",
+});
 ```
 
 ---
@@ -366,15 +434,15 @@ Every LLM API call generates a `MetricEvent`:
 ```typescript
 interface MetricEvent {
   // Identity
-  trace_id: string;           // Unique ID for this request
-  span_id: string;            // Span ID (OTel compatible)
-  request_id: string | null;  // Provider's request ID
+  trace_id: string; // Unique ID for this request
+  span_id: string; // Span ID (OTel compatible)
+  request_id: string | null; // Provider's request ID
 
   // Request details
   provider: "openai" | "anthropic" | "gemini";
-  model: string;              // e.g., "gpt-4o", "claude-3-5-sonnet"
+  model: string; // e.g., "gpt-4o", "claude-3-5-sonnet"
   stream: boolean;
-  timestamp: string;          // ISO timestamp
+  timestamp: string; // ISO timestamp
 
   // Performance
   latency_ms: number;
@@ -385,8 +453,8 @@ interface MetricEvent {
   input_tokens: number;
   output_tokens: number;
   total_tokens: number;
-  cached_tokens: number;      // Prompt cache hits
-  reasoning_tokens: number;   // For o1/o3 models
+  cached_tokens: number; // Prompt cache hits
+  reasoning_tokens: number; // For o1/o3 models
 
   // Rate limits (when available)
   rate_limit_remaining_requests?: number;
@@ -394,7 +462,7 @@ interface MetricEvent {
 
   // Tool usage
   tool_call_count?: number;
-  tool_names?: string;        // Comma-separated
+  tool_names?: string; // Comma-separated
 
   // Call relationship (when enabled)
   parent_span_id?: string;
@@ -418,15 +486,15 @@ Emitters determine where metrics go. You can use built-in emitters or create cus
 
 ```typescript
 import {
-  createConsoleEmitter,      // Log to console (development)
-  createHttpTransport,       // Send to HTTP endpoint
-  createBatchEmitter,        // Batch before sending
-  createMultiEmitter,        // Send to multiple destinations
-  createFilteredEmitter,     // Filter events
-  createTransformEmitter,    // Transform events
-  createJsonFileEmitter,     // Write to JSON file
-  createMemoryEmitter,       // Store in memory (testing)
-  createNoopEmitter,         // Discard all events
+  createConsoleEmitter, // Log to console (development)
+  createHttpTransport, // Send to HTTP endpoint
+  createBatchEmitter, // Batch before sending
+  createMultiEmitter, // Send to multiple destinations
+  createFilteredEmitter, // Filter events
+  createTransformEmitter, // Transform events
+  createJsonFileEmitter, // Write to JSON file
+  createMemoryEmitter, // Store in memory (testing)
+  createNoopEmitter, // Discard all events
 } from "aden";
 ```
 
@@ -450,8 +518,8 @@ const transport = createHttpTransport({
   apiKey: process.env.METRICS_API_KEY,
 
   // Batching (optional)
-  batchSize: 50,              // Events per batch
-  flushInterval: 5000,        // ms between flushes
+  batchSize: 50, // Events per batch
+  flushInterval: 5000, // ms between flushes
 
   // Reliability (optional)
   maxRetries: 3,
@@ -471,7 +539,7 @@ await instrument({
 
 // Graceful shutdown
 process.on("SIGTERM", async () => {
-  await transport.stop();  // Flushes remaining events
+  await transport.stop(); // Flushes remaining events
   process.exit(0);
 });
 ```
@@ -481,8 +549,8 @@ process.on("SIGTERM", async () => {
 ```typescript
 await instrument({
   emitMetric: createMultiEmitter([
-    createConsoleEmitter({ pretty: true }),  // Log locally
-    transport.emit,                           // Send to backend
+    createConsoleEmitter({ pretty: true }), // Log locally
+    transport.emit, // Send to backend
   ]),
   sdks: { OpenAI },
 });
@@ -494,7 +562,7 @@ await instrument({
 await instrument({
   emitMetric: createFilteredEmitter(
     transport.emit,
-    (event) => event.total_tokens > 100  // Only large requests
+    (event) => event.total_tokens > 100 // Only large requests
   ),
   sdks: { OpenAI },
 });
@@ -506,7 +574,11 @@ await instrument({
 await instrument({
   emitMetric: async (event) => {
     // Calculate cost
-    const cost = calculateCost(event.model, event.input_tokens, event.output_tokens);
+    const cost = calculateCost(
+      event.model,
+      event.input_tokens,
+      event.output_tokens
+    );
 
     // Store in your database
     await db.llmMetrics.create({
@@ -523,6 +595,106 @@ await instrument({
   sdks: { OpenAI },
 });
 ```
+
+### File-based Logging
+
+Write metrics to local JSONL files for offline analysis, debugging, or compliance:
+
+```typescript
+import { instrument, createFileEmitter, MetricFileLogger } from "aden";
+import OpenAI from "openai";
+
+// Option 1: Use the emitter factory
+await instrument({
+  emitMetric: createFileEmitter({ logDir: "./meter_logs" }),
+  sdks: { OpenAI },
+});
+
+// Option 2: Use the logger class directly
+const logger = new MetricFileLogger({ logDir: "./meter_logs" });
+
+// Write specific event types
+await logger.writeLLMEvent({
+  sessionId: "session_123",
+  inputTokens: 100,
+  outputTokens: 50,
+  model: "gpt-4o",
+  latencyMs: 1234,
+});
+
+await logger.writeTTSEvent({
+  sessionId: "session_123",
+  characters: 500,
+  model: "tts-1",
+});
+
+await logger.writeSTTEvent({
+  sessionId: "session_123",
+  audioSeconds: 30,
+  model: "whisper-1",
+});
+```
+
+Files are organized by date and session:
+
+```
+meter_logs/
+  2024-01-15/
+    session_abc123.jsonl
+    session_def456.jsonl
+  2024-01-16/
+    ...
+```
+
+You can configure the log directory via environment variable:
+
+```bash
+export METER_LOG_DIR=/var/log/aden
+```
+
+---
+
+## Usage Normalization
+
+Aden normalizes token usage across providers into a consistent format:
+
+```typescript
+import {
+  normalizeUsage,
+  normalizeOpenAIUsage,
+  normalizeAnthropicUsage,
+  normalizeGeminiUsage,
+} from "aden";
+
+// Auto-detect provider format
+const usage = normalizeUsage(response.usage, "openai");
+// → { input_tokens, output_tokens, total_tokens, reasoning_tokens, cached_tokens }
+
+// Provider-specific normalizers
+const openaiUsage = normalizeOpenAIUsage(response.usage);
+const anthropicUsage = normalizeAnthropicUsage(response.usage);
+const geminiUsage = normalizeGeminiUsage(response.usageMetadata);
+```
+
+### Normalized Usage Format
+
+```typescript
+interface NormalizedUsage {
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  reasoning_tokens: number; // For o1/o3 models
+  cached_tokens: number; // Prompt cache hits
+}
+```
+
+### Provider Field Mappings
+
+| Provider  | Input Tokens                  | Output Tokens                    | Cached Tokens                 |
+| --------- | ----------------------------- | -------------------------------- | ----------------------------- |
+| OpenAI    | `prompt_tokens`               | `completion_tokens`              | `prompt_tokens_details.cached_tokens` |
+| Anthropic | `input_tokens`                | `output_tokens`                  | `cache_read_input_tokens`     |
+| Gemini    | `promptTokenCount`            | `candidatesTokenCount`           | `cachedContentTokenCount`     |
 
 ---
 
@@ -589,7 +761,7 @@ For high-throughput scenarios:
 await instrument({
   emitMetric: myEmitter,
   sdks: { OpenAI },
-  trackCallRelationships: false,  // Slight performance boost
+  trackCallRelationships: false, // Slight performance boost
 });
 ```
 
@@ -674,36 +846,39 @@ app.post("/chat", async (req, res) => {
 ```typescript
 await instrument({
   // === Metrics Destination ===
-  emitMetric: myEmitter,          // Required unless apiKey is set
+  emitMetric: myEmitter, // Required unless apiKey is set
 
   // === Control Server (enables cost control) ===
-  apiKey: "aden_xxx",             // Your Aden API key
-  serverUrl: "https://...",       // Control server URL (optional)
-  failOpen: true,                 // Allow requests if server is down (default: true)
+  apiKey: "aden_xxx", // Your Aden API key
+  serverUrl: "https://...", // Control server URL (optional)
+  failOpen: true, // Allow requests if server is down (default: true)
 
   // === Context Tracking ===
   getContextId: () => getUserId(), // For per-user budgets
-  trackCallRelationships: true,    // Track call hierarchies (default: true)
+  trackCallRelationships: true, // Track call hierarchies (default: true)
 
   // === Alerts ===
-  onAlert: (alert) => {            // Callback when alert triggers
+  onAlert: (alert) => {
+    // Callback when alert triggers
     console.warn(`[${alert.level}] ${alert.message}`);
   },
 
   // === SDK Classes ===
-  sdks: {                          // SDK classes to instrument
+  sdks: {
+    // SDK classes to instrument
     OpenAI,
     Anthropic,
     GoogleGenerativeAI,
   },
 
   // === Advanced ===
-  generateSpanId: () => uuid(),    // Custom span ID generator
+  generateSpanId: () => uuid(), // Custom span ID generator
   beforeRequest: async (params, context) => {
     // Custom pre-request logic
     return { action: "proceed" };
   },
-  requestMetadata: {               // Passed to beforeRequest hook
+  requestMetadata: {
+    // Passed to beforeRequest hook
     environment: "production",
   },
 });
@@ -736,7 +911,7 @@ await instrument({
       return {
         action: "degrade",
         toModel: "gpt-4o-mini",
-        reason: "High load"
+        reason: "High load",
       };
     }
 
@@ -757,7 +932,7 @@ For advanced scenarios, create the control agent manually:
 import { createControlAgent, instrument } from "aden";
 
 const agent = createControlAgent({
-  serverUrl: "https://control-server.com",
+  serverUrl: "https://kube.acho.io",
   apiKey: process.env.ADEN_API_KEY,
 
   // Polling options (for HTTP fallback)
@@ -766,7 +941,7 @@ const agent = createControlAgent({
   timeoutMs: 5000,
 
   // Behavior
-  failOpen: true,               // Allow if server unreachable
+  failOpen: true, // Allow if server unreachable
   getContextId: () => getUserId(),
 
   // Alerts
@@ -800,50 +975,136 @@ const customerClient = makeMeteredOpenAI(new OpenAI(), {
 });
 ```
 
+### Logging Configuration
+
+Control Aden's internal logging via environment variables or programmatically:
+
+```typescript
+import { configureLogging, logger, metricsLogger } from "aden";
+
+// Set log levels programmatically
+configureLogging({
+  level: "debug", // Global log level
+  metricsLevel: "warn", // Metrics-specific logs (optional)
+});
+
+// Or via environment variables
+// ADEN_LOG_LEVEL=debug
+// ADEN_METRICS_LOG_LEVEL=warn
+
+// Use the loggers directly
+logger.debug("This is a debug message");
+logger.info("This is an info message");
+logger.warn("This is a warning");
+logger.error("This is an error");
+
+// Metrics-specific logger
+metricsLogger.debug("Metric event details");
+```
+
+**Log Levels** (in order of severity):
+
+| Level    | Description                          |
+| -------- | ------------------------------------ |
+| `debug`  | Detailed debugging information       |
+| `info`   | General operational messages         |
+| `warn`   | Warning conditions                   |
+| `error`  | Error conditions                     |
+| `silent` | Suppress all logging                 |
+
+**Custom Log Handler**:
+
+```typescript
+import { configureLogging } from "aden";
+
+configureLogging({
+  level: "info",
+  handler: {
+    debug: (msg, ...args) => myLogger.debug(msg, ...args),
+    info: (msg, ...args) => myLogger.info(msg, ...args),
+    warn: (msg, ...args) => myLogger.warn(msg, ...args),
+    error: (msg, ...args) => myLogger.error(msg, ...args),
+  },
+});
+```
+
 ---
 
 ## API Reference
 
 ### Core Functions
 
-| Function | Description |
-|----------|-------------|
-| `instrument(options)` | Instrument all LLM SDKs globally |
-| `uninstrument()` | Remove instrumentation |
-| `isInstrumented()` | Check if instrumented |
-| `getInstrumentedSDKs()` | Get which SDKs are instrumented |
+| Function                | Description                      |
+| ----------------------- | -------------------------------- |
+| `instrument(options)`   | Instrument all LLM SDKs globally |
+| `uninstrument()`        | Remove instrumentation           |
+| `isInstrumented()`      | Check if instrumented            |
+| `getInstrumentedSDKs()` | Get which SDKs are instrumented  |
+| `instrumentGenai(options)` | Instrument Google GenAI SDK (@google/genai) |
+| `uninstrumentGenai()`   | Remove GenAI instrumentation     |
 
 ### Emitter Factories
 
-| Function | Description |
-|----------|-------------|
-| `createConsoleEmitter(options?)` | Log to console |
-| `createHttpTransport(options)` | Send to HTTP endpoint |
-| `createBatchEmitter(handler, options?)` | Batch events |
-| `createMultiEmitter(emitters)` | Multiple destinations |
-| `createFilteredEmitter(emitter, filter)` | Filter events |
-| `createTransformEmitter(emitter, transform)` | Transform events |
-| `createJsonFileEmitter(options)` | Write to JSON file |
-| `createMemoryEmitter()` | Store in memory |
-| `createNoopEmitter()` | Discard events |
+| Function                                     | Description                  |
+| -------------------------------------------- | ---------------------------- |
+| `createConsoleEmitter(options?)`             | Log to console               |
+| `createHttpTransport(options)`               | Send to HTTP endpoint        |
+| `createBatchEmitter(handler, options?)`      | Batch events                 |
+| `createMultiEmitter(emitters)`               | Multiple destinations        |
+| `createFilteredEmitter(emitter, filter)`     | Filter events                |
+| `createTransformEmitter(emitter, transform)` | Transform events             |
+| `createJsonFileEmitter(options)`             | Write to JSON file           |
+| `createFileEmitter(options?)`                | Write to session JSONL files |
+| `createMemoryEmitter()`                      | Store in memory              |
+| `createNoopEmitter()`                        | Discard events               |
+
+### Usage Normalization
+
+| Function                              | Description                       |
+| ------------------------------------- | --------------------------------- |
+| `normalizeUsage(usage, provider?)`    | Normalize usage with auto-detect  |
+| `normalizeOpenAIUsage(usage)`         | Normalize OpenAI usage format     |
+| `normalizeAnthropicUsage(usage)`      | Normalize Anthropic usage format  |
+| `normalizeGeminiUsage(usageMetadata)` | Normalize Gemini usage format     |
 
 ### Context Functions
 
-| Function | Description |
-|----------|-------------|
-| `enterMeterContext(options?)` | Enter a tracking context |
-| `withMeterContextAsync(fn, options?)` | Run in isolated context |
-| `withAgent(name, fn)` | Run with named agent |
-| `pushAgent(name)` / `popAgent()` | Manual agent stack |
-| `getCurrentContext()` | Get current context |
-| `setContextMetadata(key, value)` | Set context metadata |
+| Function                              | Description              |
+| ------------------------------------- | ------------------------ |
+| `enterMeterContext(options?)`         | Enter a tracking context |
+| `withMeterContextAsync(fn, options?)` | Run in isolated context  |
+| `withAgent(name, fn)`                 | Run with named agent     |
+| `pushAgent(name)` / `popAgent()`      | Manual agent stack       |
+| `getCurrentContext()`                 | Get current context      |
+| `setContextMetadata(key, value)`      | Set context metadata     |
 
 ### Control Agent
 
-| Function | Description |
-|----------|-------------|
-| `createControlAgent(options)` | Create manual control agent |
-| `createControlAgentEmitter(agent)` | Create emitter from agent |
+| Function                           | Description                 |
+| ---------------------------------- | --------------------------- |
+| `createControlAgent(options)`      | Create manual control agent |
+| `createControlAgentEmitter(agent)` | Create emitter from agent   |
+
+### Logging
+
+| Function                        | Description                         |
+| ------------------------------- | ----------------------------------- |
+| `configureLogging(config)`      | Configure SDK log levels            |
+| `getLoggingConfig()`            | Get current logging configuration   |
+| `resetLoggingConfig()`          | Reset to default configuration      |
+| `logger`                        | General SDK logger                  |
+| `metricsLogger`                 | Metrics-specific logger             |
+
+### File Logger
+
+| Class / Function            | Description                         |
+| --------------------------- | ----------------------------------- |
+| `MetricFileLogger`          | Class for session JSONL file logging |
+| `logger.writeLLMEvent()`    | Write LLM metric event              |
+| `logger.writeTTSEvent()`    | Write TTS metric event              |
+| `logger.writeSTTEvent()`    | Write STT metric event              |
+| `logger.writeSessionStart()`| Write session start event           |
+| `logger.writeSessionEnd()`  | Write session end event             |
 
 ### Types
 
@@ -856,6 +1117,9 @@ import type {
   ControlDecision,
   AlertEvent,
   BeforeRequestResult,
+  NormalizedUsage,
+  LogLevel,
+  LoggingConfig,
 } from "aden";
 ```
 
@@ -865,18 +1129,18 @@ import type {
 
 Run examples with `npx tsx examples/<name>.ts`:
 
-| Example | Description |
-|---------|-------------|
-| `openai-basic.ts` | Basic OpenAI instrumentation |
-| `anthropic-basic.ts` | Basic Anthropic instrumentation |
-| `gemini-basic.ts` | Basic Gemini instrumentation |
-| `control-actions.ts` | All control actions: block, throttle, degrade, alert |
-| `cost-control-local.ts` | Cost control without a server (offline mode) |
-| `vercel-ai-sdk.ts` | Vercel AI SDK integration |
-| `langchain-example.ts` | LangChain integration |
-| `llamaindex-example.ts` | LlamaIndex integration |
-| `mastra-example.ts` | Mastra framework integration |
-| `multi-agent-example.ts` | Multi-agent tracking |
+| Example                  | Description                                          |
+| ------------------------ | ---------------------------------------------------- |
+| `openai-basic.ts`        | Basic OpenAI instrumentation                         |
+| `anthropic-basic.ts`     | Basic Anthropic instrumentation                      |
+| `gemini-basic.ts`        | Basic Gemini instrumentation                         |
+| `control-actions.ts`     | All control actions: block, throttle, degrade, alert |
+| `cost-control-local.ts`  | Cost control without a server (offline mode)         |
+| `vercel-ai-sdk.ts`       | Vercel AI SDK integration                            |
+| `langchain-example.ts`   | LangChain integration                                |
+| `llamaindex-example.ts`  | LlamaIndex integration                               |
+| `mastra-example.ts`      | Mastra framework integration                         |
+| `multi-agent-example.ts` | Multi-agent tracking                                 |
 
 ---
 
@@ -885,6 +1149,7 @@ Run examples with `npx tsx examples/<name>.ts`:
 ### Metrics not appearing
 
 1. **Check instrumentation order**: Call `instrument()` before creating SDK clients
+
    ```typescript
    // Correct
    await instrument({ ... });
@@ -896,11 +1161,12 @@ Run examples with `npx tsx examples/<name>.ts`:
    ```
 
 2. **Verify SDK is passed**: Make sure you're passing the SDK class
+
    ```typescript
    import OpenAI from "openai";
 
    await instrument({
-     sdks: { OpenAI },  // Pass the class, not an instance
+     sdks: { OpenAI }, // Pass the class, not an instance
    });
    ```
 
@@ -909,12 +1175,14 @@ Run examples with `npx tsx examples/<name>.ts`:
 ### Control server not connecting
 
 1. **Check environment variables**:
+
    ```bash
    echo $ADEN_API_KEY
    echo $ADEN_API_URL
    ```
 
 2. **Verify server is reachable**:
+
    ```bash
    curl $ADEN_API_URL/v1/control/health
    ```
@@ -928,10 +1196,11 @@ Run examples with `npx tsx examples/<name>.ts`:
 ### Budget not enforcing
 
 1. **Ensure getContextId is set**: Budgets are per-context
+
    ```typescript
    await instrument({
      apiKey: process.env.ADEN_API_KEY,
-     getContextId: () => getCurrentUserId(),  // Required!
+     getContextId: () => getCurrentUserId(), // Required!
    });
    ```
 
@@ -944,6 +1213,7 @@ Run examples with `npx tsx examples/<name>.ts`:
 ### High memory usage
 
 1. **Enable batching**: Don't send events one-by-one
+
    ```typescript
    const transport = createHttpTransport({
      batchSize: 100,

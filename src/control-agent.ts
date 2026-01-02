@@ -13,6 +13,7 @@ import type { MetricEvent } from "./types.js";
 import type {
   AlertEvent,
   BudgetRule,
+  BudgetValidationResponse,
   ControlAgentOptions,
   ControlDecision,
   ControlEvent,
@@ -63,6 +64,16 @@ export class ControlAgent implements IControlAgent {
       getContextId: options.getContextId ?? (() => undefined),
       instanceId: options.instanceId ?? randomUUID(),
       onAlert: options.onAlert ?? (() => {}),
+      // Hybrid enforcement options
+      enableHybridEnforcement: options.enableHybridEnforcement ?? false,
+      serverValidationThreshold: options.serverValidationThreshold ?? 80,
+      serverValidationTimeoutMs: options.serverValidationTimeoutMs ?? 2000,
+      adaptiveThresholdEnabled: options.adaptiveThresholdEnabled ?? true,
+      adaptiveMinRemainingUsd: options.adaptiveMinRemainingUsd ?? 1.0,
+      samplingEnabled: options.samplingEnabled ?? true,
+      samplingBaseRate: options.samplingBaseRate ?? 0.1,
+      samplingFullValidationPercent: options.samplingFullValidationPercent ?? 95,
+      maxExpectedOverspendPercent: options.maxExpectedOverspendPercent ?? 10,
     };
   }
 
@@ -314,7 +325,7 @@ export class ControlAgent implements IControlAgent {
         : { action: "block", reason: "No policy available and failOpen is false" };
     }
 
-    return this.evaluatePolicy(request, this.cachedPolicy);
+    return await this.evaluatePolicy(request, this.cachedPolicy);
   }
 
   /**
@@ -322,7 +333,7 @@ export class ControlAgent implements IControlAgent {
    * Priority order: block > budget/degrade > throttle > alert > allow
    * Note: throttle adds delay but doesn't skip other checks
    */
-  private evaluatePolicy(request: ControlRequest, policy: ControlPolicy): ControlDecision {
+  private async evaluatePolicy(request: ControlRequest, policy: ControlPolicy): Promise<ControlDecision> {
     // Track throttle info separately (throttle is applied but doesn't skip other checks)
     let throttleInfo: { delayMs: number; reason: string } | null = null;
 
@@ -368,45 +379,85 @@ export class ControlAgent implements IControlAgent {
       }
     }
 
-    // 3. Check budget limits
+    // 3. Check budget limits (with hybrid enforcement when enabled)
     if (policy.budgets) {
       const applicableBudgets = this.findApplicableBudgets(policy.budgets, request);
-      for (const budget of applicableBudgets) {
-        const projectedSpend = budget.spent + (request.estimated_cost ?? 0);
-        if (projectedSpend > budget.limit) {
-          // Budget exceeded - check limitAction
-          if (budget.limitAction === "degrade" && budget.degradeToModel) {
+
+      // When hybrid enforcement is enabled, we need to evaluate budgets async
+      // For sync compatibility, we check if hybrid is enabled and handle accordingly
+      if (this.options.enableHybridEnforcement) {
+        // Use the new hybrid enforcement evaluation
+        for (const budget of applicableBudgets) {
+          // Note: This is called from an async context via getDecision
+          const decision = await this.evaluateBudgetWithHybridEnforcement(
+            request,
+            budget,
+            throttleInfo
+          );
+          if (decision) {
+            return decision;
+          }
+
+          // Check degradation rules based on budget threshold
+          if (policy.degradations) {
+            for (const degrade of policy.degradations) {
+              if (
+                degrade.from_model === request.model &&
+                degrade.trigger === "budget_threshold" &&
+                degrade.threshold_percent
+              ) {
+                const usagePercent = (budget.spent / budget.limit) * 100;
+                if (usagePercent >= degrade.threshold_percent) {
+                  return {
+                    action: "degrade",
+                    reason: `Budget "${budget.name}" at ${usagePercent.toFixed(1)}% (threshold: ${degrade.threshold_percent}%)`,
+                    degradeToModel: degrade.to_model,
+                    ...(throttleInfo && { throttleDelayMs: throttleInfo.delayMs }),
+                  };
+                }
+              }
+            }
+          }
+        }
+      } else {
+        // Original local-only enforcement
+        for (const budget of applicableBudgets) {
+          const projectedSpend = budget.spent + (request.estimated_cost ?? 0);
+          if (projectedSpend > budget.limit) {
+            // Budget exceeded - check limitAction
+            if (budget.limitAction === "degrade" && budget.degradeToModel) {
+              return {
+                action: "degrade",
+                reason: `Budget "${budget.name}" exceeded: $${projectedSpend.toFixed(4)} > $${budget.limit}`,
+                degradeToModel: budget.degradeToModel,
+                ...(throttleInfo && { throttleDelayMs: throttleInfo.delayMs }),
+              };
+            }
+            // Map limitAction to ControlAction (kill -> block, throttle -> throttle)
+            const action = budget.limitAction === "kill" ? "block" : budget.limitAction;
             return {
-              action: "degrade",
+              action,
               reason: `Budget "${budget.name}" exceeded: $${projectedSpend.toFixed(4)} > $${budget.limit}`,
-              degradeToModel: budget.degradeToModel,
-              ...(throttleInfo && { throttleDelayMs: throttleInfo.delayMs }),
             };
           }
-          // Map limitAction to ControlAction (kill -> block, throttle -> throttle)
-          const action = budget.limitAction === "kill" ? "block" : budget.limitAction;
-          return {
-            action,
-            reason: `Budget "${budget.name}" exceeded: $${projectedSpend.toFixed(4)} > $${budget.limit}`,
-          };
-        }
 
-        // Check degradation rules based on budget threshold
-        if (policy.degradations) {
-          for (const degrade of policy.degradations) {
-            if (
-              degrade.from_model === request.model &&
-              degrade.trigger === "budget_threshold" &&
-              degrade.threshold_percent
-            ) {
-              const usagePercent = (budget.spent / budget.limit) * 100;
-              if (usagePercent >= degrade.threshold_percent) {
-                return {
-                  action: "degrade",
-                  reason: `Budget "${budget.name}" at ${usagePercent.toFixed(1)}% (threshold: ${degrade.threshold_percent}%)`,
-                  degradeToModel: degrade.to_model,
-                  ...(throttleInfo && { throttleDelayMs: throttleInfo.delayMs }),
-                };
+          // Check degradation rules based on budget threshold
+          if (policy.degradations) {
+            for (const degrade of policy.degradations) {
+              if (
+                degrade.from_model === request.model &&
+                degrade.trigger === "budget_threshold" &&
+                degrade.threshold_percent
+              ) {
+                const usagePercent = (budget.spent / budget.limit) * 100;
+                if (usagePercent >= degrade.threshold_percent) {
+                  return {
+                    action: "degrade",
+                    reason: `Budget "${budget.name}" at ${usagePercent.toFixed(1)}% (threshold: ${degrade.threshold_percent}%)`,
+                    degradeToModel: degrade.to_model,
+                    ...(throttleInfo && { throttleDelayMs: throttleInfo.delayMs }),
+                  };
+                }
               }
             }
           }
@@ -666,6 +717,305 @@ export class ControlAgent implements IControlAgent {
     const inputCost = event.input_tokens * 0.0000025; // $2.50 per 1M tokens
     const outputCost = event.output_tokens * 0.00001; // $10 per 1M tokens
     return inputCost + outputCost;
+  }
+
+  // ===========================================================================
+  // Hybrid Enforcement - Server-Side Budget Validation
+  // ===========================================================================
+
+  /**
+   * Calculate the sampling rate for server validation based on usage percentage.
+   *
+   * The rate interpolates from samplingBaseRate at threshold to 1.0 at
+   * samplingFullValidationPercent.
+   *
+   * Example with defaults (threshold=80%, base_rate=0.1, full=95%):
+   * - At 80%: 10% of requests validated
+   * - At 87.5%: 55% of requests validated
+   * - At 95%+: 100% of requests validated
+   */
+  private calculateSamplingRate(usagePercent: number): number {
+    const threshold = this.options.serverValidationThreshold;
+    const fullPercent = this.options.samplingFullValidationPercent;
+    const baseRate = this.options.samplingBaseRate;
+
+    if (usagePercent >= fullPercent) {
+      return 1.0;
+    }
+
+    if (usagePercent < threshold) {
+      return 0.0;
+    }
+
+    // Linear interpolation from baseRate to 1.0
+    const rangeSize = fullPercent - threshold;
+    const progress = (usagePercent - threshold) / rangeSize;
+    return baseRate + (1.0 - baseRate) * progress;
+  }
+
+  /**
+   * Determine if we should validate this request with the server.
+   *
+   * Uses adaptive thresholds and probabilistic sampling to minimize
+   * latency impact while maintaining enforcement accuracy.
+   *
+   * Returns true if:
+   * 1. Hybrid enforcement is enabled
+   * 2. Budget usage is at or above the validation threshold
+   * 3. Either:
+   *    a. Remaining budget is below adaptiveMinRemainingUsd (always validate)
+   *    b. Sampling dice roll succeeds based on current usage level
+   */
+  private shouldValidateWithServer(
+    budgetUsagePercent: number,
+    remainingBudgetUsd: number,
+    _budgetLimitUsd: number
+  ): boolean {
+    if (!this.options.enableHybridEnforcement) {
+      return false;
+    }
+
+    // Below threshold - no validation needed
+    if (budgetUsagePercent < this.options.serverValidationThreshold) {
+      return false;
+    }
+
+    // ADAPTIVE: Force validation if remaining budget is critically low
+    if (this.options.adaptiveThresholdEnabled) {
+      if (remainingBudgetUsd <= this.options.adaptiveMinRemainingUsd) {
+        console.debug(
+          `[aden] Remaining budget $${remainingBudgetUsd.toFixed(2)} <= ` +
+          `$${this.options.adaptiveMinRemainingUsd.toFixed(2)}, forcing validation`
+        );
+        return true;
+      }
+    }
+
+    // SAMPLING: Probabilistic validation based on usage level
+    if (this.options.samplingEnabled) {
+      const samplingRate = this.calculateSamplingRate(budgetUsagePercent);
+      const shouldSample = Math.random() < samplingRate;
+
+      if (!shouldSample) {
+        console.debug(
+          `[aden] Skipping validation (sampling rate: ${(samplingRate * 100).toFixed(1)}%, ` +
+          `usage: ${budgetUsagePercent.toFixed(1)}%)`
+        );
+        return false;
+      }
+
+      console.debug(
+        `[aden] Sampled for validation (rate: ${(samplingRate * 100).toFixed(1)}%, ` +
+        `usage: ${budgetUsagePercent.toFixed(1)}%)`
+      );
+      return true;
+    }
+
+    // No sampling - validate all requests above threshold
+    return true;
+  }
+
+  /**
+   * Check if request exceeds the hard limit (soft limit + max overspend buffer).
+   *
+   * This provides a safety net to prevent runaway spending even under
+   * concurrency race conditions.
+   *
+   * Returns a BLOCK decision if hard limit exceeded, null otherwise.
+   */
+  private checkHardLimit(
+    _usagePercent: number,
+    projectedPercent: number
+  ): ControlDecision | null {
+    const hardLimit = 100.0 + this.options.maxExpectedOverspendPercent;
+
+    if (projectedPercent >= hardLimit) {
+      return {
+        action: "block",
+        reason: `Hard limit exceeded: ${projectedPercent.toFixed(1)}% >= ${hardLimit.toFixed(1)}%`,
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Validate budget with server synchronously.
+   *
+   * Returns BudgetValidationResponse if successful, null if validation failed.
+   * On failure, caller should fall back to local enforcement based on failOpen.
+   */
+  private async validateBudgetWithServer(
+    budgetId: string,
+    estimatedCost: number,
+    localSpend?: number
+  ): Promise<BudgetValidationResponse | null> {
+    const httpUrl = this.options.serverUrl
+      .replace("wss://", "https://")
+      .replace("ws://", "http://");
+
+    try {
+      const body: Record<string, unknown> = {
+        budget_id: budgetId,
+        estimated_cost: estimatedCost,
+      };
+
+      // Include local spend so server can use max(local, TSDB) for accuracy
+      if (localSpend !== undefined) {
+        body.local_spend = localSpend;
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(
+        () => controller.abort(),
+        this.options.serverValidationTimeoutMs
+      );
+
+      try {
+        const response = await fetch(`${httpUrl}/v1/control/budget/validate`, {
+          method: "POST",
+          signal: controller.signal,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.options.apiKey}`,
+            "X-SDK-Instance-ID": this.options.instanceId,
+          },
+          body: JSON.stringify(body),
+        });
+
+        if (response.ok) {
+          const data = await response.json() as Record<string, unknown>;
+          console.debug(
+            `[aden] Server validation response: allowed=${data.allowed}, ` +
+            `action=${data.action}, reason=${data.reason}`
+          );
+          return {
+            allowed: (data.allowed as boolean) ?? true,
+            action: (data.action as "allow" | "block" | "degrade" | "throttle") ?? "allow",
+            authoritativeSpend: (data.authoritative_spend as number) ?? 0,
+            budgetLimit: (data.budget_limit as number) ?? 0,
+            usagePercent: (data.usage_percent as number) ?? 0,
+            policyVersion: (data.policy_version as string) ?? "",
+            updatedSpend: (data.updated_spend as number) ?? 0,
+            reason: data.reason as string | undefined,
+            projectedPercent: data.projected_percent as number | undefined,
+            degradeToModel: data.degrade_to_model as string | undefined,
+          };
+        } else {
+          console.warn(`[aden] Server validation returned status ${response.status}`);
+          return null;
+        }
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    } catch (error) {
+      console.warn(`[aden] Server validation failed: ${error}`);
+      return null;
+    }
+  }
+
+  /**
+   * Convert server validation response to a ControlDecision
+   */
+  private applyServerValidationResult(
+    validation: BudgetValidationResponse,
+    budgetId: string
+  ): ControlDecision {
+    // Update local budget cache with authoritative spend
+    if (this.cachedPolicy?.budgets) {
+      for (const budget of this.cachedPolicy.budgets) {
+        if (budget.id === budgetId) {
+          budget.spent = validation.updatedSpend;
+          break;
+        }
+      }
+    }
+
+    return {
+      action: validation.action,
+      reason: validation.reason ?? `Server validation: ${validation.action}`,
+      degradeToModel: validation.degradeToModel,
+    };
+  }
+
+  /**
+   * Evaluate a single budget with hybrid enforcement
+   */
+  private async evaluateBudgetWithHybridEnforcement(
+    request: ControlRequest,
+    budget: BudgetRule,
+    throttleInfo: { delayMs: number; reason: string } | null
+  ): Promise<ControlDecision | null> {
+    const estimatedCost = request.estimated_cost ?? 0;
+    const currentSpend = budget.spent;
+    const limit = budget.limit;
+
+    // Calculate local usage and projected percentages
+    const usagePercent = limit > 0 ? (currentSpend / limit) * 100 : 0;
+    const projectedSpend = currentSpend + estimatedCost;
+    const projectedPercent = limit > 0 ? (projectedSpend / limit) * 100 : 0;
+    const remaining = Math.max(0, limit - currentSpend);
+
+    // HARD LIMIT CHECK: Block if exceeding max allowed overspend
+    // Only applies when budget action is "kill" (block)
+    if (budget.limitAction === "kill") {
+      const hardLimitDecision = this.checkHardLimit(usagePercent, projectedPercent);
+      if (hardLimitDecision) {
+        return hardLimitDecision;
+      }
+    }
+
+    // HYBRID ENFORCEMENT: Check if we should validate with server
+    if (this.shouldValidateWithServer(usagePercent, remaining, limit)) {
+      console.debug(
+        `[aden] Budget '${budget.id}' at ${usagePercent.toFixed(1)}% ` +
+        `($${currentSpend.toFixed(2)}/$${limit.toFixed(2)}), validating with server`
+      );
+
+      const validation = await this.validateBudgetWithServer(
+        budget.id,
+        estimatedCost,
+        currentSpend
+      );
+
+      if (validation) {
+        // Server validation succeeded - use authoritative decision
+        return this.applyServerValidationResult(validation, budget.id);
+      } else {
+        // Server validation failed - fall back to local enforcement
+        console.warn(
+          `[aden] Server validation failed for budget '${budget.id}', using local enforcement`
+        );
+        if (!this.options.failOpen) {
+          return {
+            action: "block",
+            reason: `Server validation failed for budget '${budget.id}' and failOpen is false`,
+          };
+        }
+        // Continue with local enforcement below
+      }
+    }
+
+    // LOCAL ENFORCEMENT: Check if budget would be exceeded (soft limit)
+    if (projectedPercent >= 100) {
+      if (budget.limitAction === "degrade" && budget.degradeToModel) {
+        return {
+          action: "degrade",
+          reason: `Budget "${budget.name}" exceeded: $${projectedSpend.toFixed(4)} > $${limit} (${projectedPercent.toFixed(1)}%)`,
+          degradeToModel: budget.degradeToModel,
+          ...(throttleInfo && { throttleDelayMs: throttleInfo.delayMs }),
+        };
+      }
+      // Map limitAction to ControlAction (kill -> block, throttle -> throttle)
+      const action = budget.limitAction === "kill" ? "block" : budget.limitAction;
+      return {
+        action,
+        reason: `Budget "${budget.name}" exceeded: $${projectedSpend.toFixed(4)} > $${limit} (${projectedPercent.toFixed(1)}%)`,
+      };
+    }
+
+    // No restrictive action needed for this budget
+    return null;
   }
 
   /**
