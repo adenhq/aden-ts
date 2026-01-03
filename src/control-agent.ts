@@ -14,6 +14,7 @@ import type {
   AlertEvent,
   BudgetRule,
   BudgetValidationResponse,
+  ControlAction,
   ControlAgentOptions,
   ControlDecision,
   ControlEvent,
@@ -64,12 +65,12 @@ export class ControlAgent implements IControlAgent {
       getContextId: options.getContextId ?? (() => undefined),
       instanceId: options.instanceId ?? randomUUID(),
       onAlert: options.onAlert ?? (() => {}),
-      // Hybrid enforcement options
-      enableHybridEnforcement: options.enableHybridEnforcement ?? false,
-      serverValidationThreshold: options.serverValidationThreshold ?? 80,
+      // Hybrid enforcement options (defaults match Python SDK)
+      enableHybridEnforcement: options.enableHybridEnforcement ?? true,
+      serverValidationThreshold: options.serverValidationThreshold ?? 5,
       serverValidationTimeoutMs: options.serverValidationTimeoutMs ?? 2000,
       adaptiveThresholdEnabled: options.adaptiveThresholdEnabled ?? true,
-      adaptiveMinRemainingUsd: options.adaptiveMinRemainingUsd ?? 1.0,
+      adaptiveMinRemainingUsd: options.adaptiveMinRemainingUsd ?? 5.0,
       samplingEnabled: options.samplingEnabled ?? true,
       samplingBaseRate: options.samplingBaseRate ?? 0.1,
       samplingFullValidationPercent: options.samplingFullValidationPercent ?? 95,
@@ -380,26 +381,31 @@ export class ControlAgent implements IControlAgent {
     }
 
     // 3. Check budget limits (with hybrid enforcement when enabled)
+    // Evaluate ALL matching budgets and return the MOST RESTRICTIVE decision
     if (policy.budgets) {
       const applicableBudgets = this.findApplicableBudgets(policy.budgets, request);
 
-      // When hybrid enforcement is enabled, we need to evaluate budgets async
-      // For sync compatibility, we check if hybrid is enabled and handle accordingly
-      if (this.options.enableHybridEnforcement) {
-        // Use the new hybrid enforcement evaluation
+      if (applicableBudgets.length > 0) {
+        let mostRestrictiveDecision: ControlDecision | null = null;
+        let mostRestrictivePriority = -1;
+
         for (const budget of applicableBudgets) {
-          // Note: This is called from an async context via getDecision
-          const decision = await this.evaluateBudgetWithHybridEnforcement(
-            request,
-            budget,
-            throttleInfo
-          );
-          if (decision) {
-            return decision;
+          let decision: ControlDecision | null = null;
+
+          if (this.options.enableHybridEnforcement) {
+            // Use hybrid enforcement evaluation
+            decision = await this.evaluateBudgetWithHybridEnforcement(
+              request,
+              budget,
+              throttleInfo
+            );
+          } else {
+            // Local-only enforcement
+            decision = this.evaluateBudgetLocally(request, budget, throttleInfo);
           }
 
-          // Check degradation rules based on budget threshold
-          if (policy.degradations) {
+          // Check degradation rules based on budget threshold (if no decision yet)
+          if (!decision && policy.degradations) {
             for (const degrade of policy.degradations) {
               if (
                 degrade.from_model === request.model &&
@@ -408,59 +414,40 @@ export class ControlAgent implements IControlAgent {
               ) {
                 const usagePercent = (budget.spent / budget.limit) * 100;
                 if (usagePercent >= degrade.threshold_percent) {
-                  return {
+                  decision = {
                     action: "degrade",
                     reason: `Budget "${budget.name}" at ${usagePercent.toFixed(1)}% (threshold: ${degrade.threshold_percent}%)`,
                     degradeToModel: degrade.to_model,
                     ...(throttleInfo && { throttleDelayMs: throttleInfo.delayMs }),
                   };
+                  break;
                 }
               }
+            }
+          }
+
+          // Track most restrictive decision
+          if (decision) {
+            const priority = this.getActionPriority(decision.action);
+            if (priority > mostRestrictivePriority) {
+              mostRestrictiveDecision = decision;
+              mostRestrictivePriority = priority;
+            }
+
+            // Short-circuit: BLOCK is highest priority, no need to continue
+            if (decision.action === "block") {
+              break;
             }
           }
         }
-      } else {
-        // Original local-only enforcement
-        for (const budget of applicableBudgets) {
-          const projectedSpend = budget.spent + (request.estimated_cost ?? 0);
-          if (projectedSpend > budget.limit) {
-            // Budget exceeded - check limitAction
-            if (budget.limitAction === "degrade" && budget.degradeToModel) {
-              return {
-                action: "degrade",
-                reason: `Budget "${budget.name}" exceeded: $${projectedSpend.toFixed(4)} > $${budget.limit}`,
-                degradeToModel: budget.degradeToModel,
-                ...(throttleInfo && { throttleDelayMs: throttleInfo.delayMs }),
-              };
-            }
-            // Map limitAction to ControlAction (kill -> block, throttle -> throttle)
-            const action = budget.limitAction === "kill" ? "block" : budget.limitAction;
-            return {
-              action,
-              reason: `Budget "${budget.name}" exceeded: $${projectedSpend.toFixed(4)} > $${budget.limit}`,
-            };
-          }
 
-          // Check degradation rules based on budget threshold
-          if (policy.degradations) {
-            for (const degrade of policy.degradations) {
-              if (
-                degrade.from_model === request.model &&
-                degrade.trigger === "budget_threshold" &&
-                degrade.threshold_percent
-              ) {
-                const usagePercent = (budget.spent / budget.limit) * 100;
-                if (usagePercent >= degrade.threshold_percent) {
-                  return {
-                    action: "degrade",
-                    reason: `Budget "${budget.name}" at ${usagePercent.toFixed(1)}% (threshold: ${degrade.threshold_percent}%)`,
-                    degradeToModel: degrade.to_model,
-                    ...(throttleInfo && { throttleDelayMs: throttleInfo.delayMs }),
-                  };
-                }
-              }
-            }
+        // Return most restrictive decision if found
+        if (mostRestrictiveDecision) {
+          // Add throttle info if present and not already blocking
+          if (throttleInfo && mostRestrictiveDecision.action !== "block" && !mostRestrictiveDecision.throttleDelayMs) {
+            mostRestrictiveDecision.throttleDelayMs = throttleInfo.delayMs;
           }
+          return mostRestrictiveDecision;
         }
       }
     }
@@ -587,49 +574,121 @@ export class ControlAgent implements IControlAgent {
   }
 
   /**
-   * Find budgets that apply to the given request based on budget type
+   * Get action priority for finding most restrictive decision.
+   * Higher priority = more restrictive.
+   */
+  private getActionPriority(action: ControlAction): number {
+    const priority: Record<ControlAction, number> = {
+      allow: 0,
+      alert: 1,
+      throttle: 2,
+      degrade: 3,
+      block: 4,
+    };
+    return priority[action] ?? 0;
+  }
+
+  /**
+   * Evaluate a single budget using local-only enforcement.
+   * Returns a decision if the budget triggers an action, null otherwise.
+   */
+  private evaluateBudgetLocally(
+    request: ControlRequest,
+    budget: BudgetRule,
+    throttleInfo: { delayMs: number; reason: string } | null
+  ): ControlDecision | null {
+    const projectedSpend = budget.spent + (request.estimated_cost ?? 0);
+
+    if (projectedSpend > budget.limit) {
+      // Budget exceeded - check limitAction
+      if (budget.limitAction === "degrade" && budget.degradeToModel) {
+        return {
+          action: "degrade",
+          reason: `Budget "${budget.name}" exceeded: $${projectedSpend.toFixed(4)} > $${budget.limit}`,
+          degradeToModel: budget.degradeToModel,
+          ...(throttleInfo && { throttleDelayMs: throttleInfo.delayMs }),
+        };
+      }
+      // Map limitAction to ControlAction (kill -> block, throttle -> throttle)
+      const action = budget.limitAction === "kill" ? "block" : budget.limitAction;
+      return {
+        action,
+        reason: `Budget "${budget.name}" exceeded: $${projectedSpend.toFixed(4)} > $${budget.limit}`,
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Find budgets that apply to the given request based on budget type.
+   *
+   * Matching logic by budget type:
+   * - global: Matches ALL requests
+   * - agent: Matches if request.metadata.agent == budget.name or budget.id
+   * - tenant: Matches if request.metadata.tenant_id == budget.name or budget.id
+   * - customer: Matches if request.metadata.customer_id == budget.name or budget.id
+   * - feature: Matches if request.metadata.feature == budget.name or budget.id
+   * - tag: Matches if any request.metadata.tags intersect with budget.tags
+   * - legacy (context_id): Matches if request.context_id == budget.context_id
    */
   private findApplicableBudgets(budgets: BudgetRule[], request: ControlRequest): BudgetRule[] {
     const result: BudgetRule[] = [];
     const metadata = request.metadata || {};
 
     for (const budget of budgets) {
+      // Legacy context_id matching (for backwards compatibility)
+      if (budget.context_id && request.context_id) {
+        if (budget.context_id === request.context_id) {
+          result.push(budget);
+          continue;
+        }
+      }
+
       switch (budget.type) {
         case "global":
           // Global budgets always apply
           result.push(budget);
           break;
 
-        case "agent":
-          // Match by agent_id in metadata
-          if (metadata.agent_id && budget.id.includes(String(metadata.agent_id))) {
+        case "agent": {
+          // Match by agent in metadata against name OR id with exact equality
+          const agent = metadata.agent as string | undefined;
+          if (agent && (agent === budget.name || agent === budget.id)) {
             result.push(budget);
           }
           break;
+        }
 
-        case "tenant":
-          // Match by tenant_id in metadata
-          if (metadata.tenant_id && budget.id.includes(String(metadata.tenant_id))) {
+        case "tenant": {
+          // Match by tenant_id in metadata against name OR id with exact equality
+          const tenantId = metadata.tenant_id as string | undefined;
+          if (tenantId && (tenantId === budget.name || tenantId === budget.id)) {
             result.push(budget);
           }
           break;
+        }
 
-        case "customer":
-          // Match by customer_id in metadata or context_id
+        case "customer": {
+          // Match by customer_id in metadata or context_id against name OR id
+          const customerId = metadata.customer_id as string | undefined;
           if (
-            (metadata.customer_id && budget.id.includes(String(metadata.customer_id))) ||
-            (request.context_id && budget.id.includes(request.context_id))
+            (customerId && (customerId === budget.name || customerId === budget.id)) ||
+            (request.context_id && (request.context_id === budget.name || request.context_id === budget.id))
           ) {
             result.push(budget);
           }
           break;
+        }
 
-        case "feature":
-          // Match by feature in metadata
-          if (metadata.feature && budget.id.includes(String(metadata.feature))) {
+        case "feature": {
+          // Match by feature in metadata against name OR id with exact equality
+          const feature = metadata.feature as string | undefined;
+          if (feature && (feature === budget.name || feature === budget.id)) {
             result.push(budget);
           }
           break;
+        }
 
         case "tag":
           // Match if request has any of the budget's tags
@@ -688,21 +747,70 @@ export class ControlAgent implements IControlAgent {
 
     await this.sendEvent(wrapper);
 
-    // Update local budget tracking
+    // Update local budget tracking for all matching budgets
     if (this.cachedPolicy?.budgets && event.total_tokens > 0) {
       const estimatedCost = this.estimateCost(event);
       const contextId = this.options.getContextId?.();
+      const metadata = event.metadata || {};
 
       for (const budget of this.cachedPolicy.budgets) {
-        // Update global budgets
-        if (budget.type === "global") {
-          budget.spent += estimatedCost;
-        }
-        // Update customer budgets that match the context_id
-        else if (budget.type === "customer" && contextId) {
-          if (budget.id === contextId || budget.id.includes(contextId)) {
-            budget.spent += estimatedCost;
+        let shouldUpdate = false;
+
+        // Check if this budget applies to this event
+        switch (budget.type) {
+          case "global":
+            // Global budgets always apply
+            shouldUpdate = true;
+            break;
+
+          case "agent": {
+            // Match by agent in metadata against name OR id
+            const agent = metadata.agent as string | undefined;
+            shouldUpdate = Boolean(agent && (agent === budget.name || agent === budget.id));
+            break;
           }
+
+          case "tenant": {
+            // Match by tenant_id in metadata against name OR id
+            const tenantId = metadata.tenant_id as string | undefined;
+            shouldUpdate = Boolean(tenantId && (tenantId === budget.name || tenantId === budget.id));
+            break;
+          }
+
+          case "customer": {
+            // Match by customer_id in metadata or context_id against name OR id
+            const customerId = metadata.customer_id as string | undefined;
+            shouldUpdate = Boolean(
+              (customerId && (customerId === budget.name || customerId === budget.id)) ||
+              (contextId && (contextId === budget.name || contextId === budget.id))
+            );
+            break;
+          }
+
+          case "feature": {
+            // Match by feature in metadata against name OR id
+            const feature = metadata.feature as string | undefined;
+            shouldUpdate = Boolean(feature && (feature === budget.name || feature === budget.id));
+            break;
+          }
+
+          case "tag": {
+            // Match if request has any of the budget's tags
+            if (budget.tags && Array.isArray(metadata.tags)) {
+              const requestTags = metadata.tags as string[];
+              shouldUpdate = budget.tags.some((tag) => requestTags.includes(tag));
+            }
+            break;
+          }
+        }
+
+        // Also check legacy context_id matching
+        if (!shouldUpdate && budget.context_id && contextId) {
+          shouldUpdate = budget.context_id === contextId;
+        }
+
+        if (shouldUpdate) {
+          budget.spent += estimatedCost;
         }
       }
     }
@@ -784,7 +892,7 @@ export class ControlAgent implements IControlAgent {
     if (this.options.adaptiveThresholdEnabled) {
       if (remainingBudgetUsd <= this.options.adaptiveMinRemainingUsd) {
         console.debug(
-          `[aden] Remaining budget $${remainingBudgetUsd.toFixed(2)} <= ` +
+          `[aden] Remaining budget $${remainingBudgetUsd.toFixed(4)} <= ` +
           `$${this.options.adaptiveMinRemainingUsd.toFixed(2)}, forcing validation`
         );
         return true;
@@ -968,8 +1076,8 @@ export class ControlAgent implements IControlAgent {
     // HYBRID ENFORCEMENT: Check if we should validate with server
     if (this.shouldValidateWithServer(usagePercent, remaining, limit)) {
       console.debug(
-        `[aden] Budget '${budget.id}' at ${usagePercent.toFixed(1)}% ` +
-        `($${currentSpend.toFixed(2)}/$${limit.toFixed(2)}), validating with server`
+        `[aden] Budget '${budget.name}' at ${usagePercent.toFixed(1)}% ` +
+        `($${currentSpend.toFixed(6)}/$${limit.toFixed(6)}), validating with server`
       );
 
       const validation = await this.validateBudgetWithServer(

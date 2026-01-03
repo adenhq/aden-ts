@@ -194,6 +194,8 @@ export interface BudgetRule {
   alerts: BudgetAlert[];
   /** Notification settings */
   notifications: BudgetNotifications;
+  /** Legacy context_id for backwards compatibility */
+  context_id?: string;
 }
 
 /**
@@ -360,14 +362,14 @@ export interface ControlAgentOptions {
   /**
    * Enable hybrid enforcement (local + server-side validation).
    * When enabled, budgets above the threshold are validated with the server.
-   * Default: false
+   * Default: true
    */
   enableHybridEnforcement?: boolean;
 
   /**
    * Budget usage threshold (percentage) at which to start server validation.
    * Requests below this threshold use local-only enforcement.
-   * Default: 80
+   * Default: 5
    */
   serverValidationThreshold?: number;
 
@@ -387,7 +389,7 @@ export interface ControlAgentOptions {
   /**
    * Minimum remaining budget (USD) that triggers forced server validation.
    * Only applies when adaptiveThresholdEnabled is true.
-   * Default: 1.0
+   * Default: 5.0
    */
   adaptiveMinRemainingUsd?: number;
 
