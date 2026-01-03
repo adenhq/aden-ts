@@ -203,6 +203,7 @@ async function getControlDecision(
     action: decision.action,
     reason: decision.reason,
     degraded_to: decision.degradeToModel,
+    degraded_to_provider: decision.degradeToProvider,
     throttle_delay_ms: decision.throttleDelayMs,
   });
 

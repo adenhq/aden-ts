@@ -507,6 +507,7 @@ export class ControlAgent implements IControlAgent {
           if (!decision && policy.degradations) {
             for (const degrade of policy.degradations) {
               if (
+                degrade.provider === request.provider &&
                 degrade.from_model === request.model &&
                 degrade.trigger === "budget_threshold" &&
                 degrade.threshold_percent
@@ -517,6 +518,7 @@ export class ControlAgent implements IControlAgent {
                     action: "degrade",
                     reason: `Budget "${budget.name}" at ${usagePercent.toFixed(1)}% (threshold: ${degrade.threshold_percent}%)`,
                     degradeToModel: degrade.to_model,
+                    degradeToProvider: degrade.provider,
                     ...(throttleInfo && { throttleDelayMs: throttleInfo.delayMs }),
                   };
                   break;
@@ -554,12 +556,17 @@ export class ControlAgent implements IControlAgent {
     // 4. Check always-degrade rules
     if (policy.degradations) {
       for (const degrade of policy.degradations) {
-        if (degrade.from_model === request.model && degrade.trigger === "always") {
+        if (
+          degrade.provider === request.provider &&
+          degrade.from_model === request.model &&
+          degrade.trigger === "always"
+        ) {
           if (!degrade.context_id || degrade.context_id === request.context_id) {
             return {
               action: "degrade",
               reason: "Model degradation rule (always)",
               degradeToModel: degrade.to_model,
+              degradeToProvider: degrade.provider,
               ...(throttleInfo && { throttleDelayMs: throttleInfo.delayMs }),
             };
           }
@@ -705,6 +712,7 @@ export class ControlAgent implements IControlAgent {
           action: "degrade",
           reason: `Budget "${budget.name}" exceeded: $${projectedSpend.toFixed(4)} > $${budget.limit}`,
           degradeToModel: budget.degradeToModel,
+          degradeToProvider: budget.degradeToProvider,
           ...(throttleInfo && { throttleDelayMs: throttleInfo.delayMs }),
         };
       }
@@ -1120,6 +1128,7 @@ export class ControlAgent implements IControlAgent {
             reason: data.reason as string | undefined,
             projectedPercent: data.projected_percent as number | undefined,
             degradeToModel: data.degrade_to_model as string | undefined,
+            degradeToProvider: data.degrade_to_provider as string | undefined,
           };
         } else {
           logger.warn(`Server validation returned status ${response.status}`);
@@ -1155,6 +1164,7 @@ export class ControlAgent implements IControlAgent {
       action: validation.action,
       reason: validation.reason ?? `Server validation: ${validation.action}`,
       degradeToModel: validation.degradeToModel,
+      degradeToProvider: validation.degradeToProvider,
     };
   }
 
@@ -1223,6 +1233,7 @@ export class ControlAgent implements IControlAgent {
           action: "degrade",
           reason: `Budget "${budget.name}" exceeded: $${projectedSpend.toFixed(4)} > $${limit} (${projectedPercent.toFixed(1)}%)`,
           degradeToModel: budget.degradeToModel,
+          degradeToProvider: budget.degradeToProvider,
           ...(throttleInfo && { throttleDelayMs: throttleInfo.delayMs }),
         };
       }

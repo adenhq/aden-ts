@@ -31,6 +31,8 @@ export interface ControlDecision {
   reason?: string;
   /** If action is "degrade", switch to this model */
   degradeToModel?: string;
+  /** If action is "degrade", the provider for the degraded model */
+  degradeToProvider?: string;
   /** If action is "throttle", delay by this many milliseconds */
   throttleDelayMs?: number;
   /** If action is "alert", the severity level */
@@ -74,6 +76,8 @@ export interface ControlEvent extends BaseEvent {
   reason?: string;
   /** If degraded, what model was used instead */
   degraded_to?: string;
+  /** If degraded, the provider for the degraded model */
+  degraded_to_provider?: string;
   /** If throttled, how long was the delay in ms */
   throttle_delay_ms?: number;
   /** Estimated cost that triggered the decision */
@@ -190,6 +194,8 @@ export interface BudgetRule {
   limitAction: LimitAction;
   /** If limitAction is "degrade", switch to this model */
   degradeToModel?: string;
+  /** If limitAction is "degrade", the provider for the degraded model */
+  degradeToProvider?: string;
   /** Alert thresholds */
   alerts: BudgetAlert[];
   /** Notification settings */
@@ -230,12 +236,14 @@ export interface BlockRule {
  * Degrade rule - automatic model downgrade
  */
 export interface DegradeRule {
+  /** Provider this rule applies to (required - no cross-vendor degradation) */
+  provider: string;
   /** Model to downgrade from */
   from_model: string;
   /** Model to downgrade to */
   to_model: string;
   /** When to trigger the downgrade */
-  trigger: "budget_threshold" | "rate_limit" | "always";
+  trigger: "budget_threshold" | "rate_limit" | "always" | "budget_exceeded";
   /** For budget_threshold: percentage at which to trigger (0-100) */
   threshold_percent?: number;
   /** Context ID this rule applies to (omit for all) */
@@ -464,6 +472,8 @@ export interface BudgetValidationResponse {
   projectedPercent?: number;
   /** Model to degrade to (if action is "degrade") */
   degradeToModel?: string;
+  /** Provider for the degraded model (if action is "degrade") */
+  degradeToProvider?: string;
 }
 
 // =============================================================================

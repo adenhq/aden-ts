@@ -199,7 +199,7 @@ export type BeforeRequestResult =
   | { action: "proceed" }
   | { action: "throttle"; delayMs: number }
   | { action: "cancel"; reason: string }
-  | { action: "degrade"; toModel: string; reason?: string; delayMs?: number }
+  | { action: "degrade"; toModel: string; toProvider?: string; reason?: string; delayMs?: number }
   | { action: "alert"; level: "info" | "warning" | "critical"; message: string; delayMs?: number };
 
 /**

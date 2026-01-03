@@ -79,6 +79,7 @@ function createControlBeforeRequestHook(
         return {
           action: "degrade",
           toModel: decision.degradeToModel!,
+          toProvider: decision.degradeToProvider,
           reason: decision.reason,
           ...(decision.throttleDelayMs && { delayMs: decision.throttleDelayMs }),
         };
