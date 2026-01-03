@@ -10,6 +10,7 @@
 import { randomUUID } from "crypto";
 import WebSocket from "ws";
 import type { MetricEvent } from "./types.js";
+import { logger } from "./logging.js";
 import type {
   AlertEvent,
   BudgetRule,
@@ -83,12 +84,14 @@ export class ControlAgent implements IControlAgent {
    */
   async connect(): Promise<void> {
     const url = this.options.serverUrl;
+    logger.debug(`Connecting to control server: ${url}`);
 
     // Determine transport based on URL scheme
     if (url.startsWith("wss://") || url.startsWith("ws://")) {
       await this.connectWebSocket();
     } else {
       // HTTP-only mode: just use polling
+      logger.debug("Using HTTP polling mode (no WebSocket URL)");
       this.startPolling();
     }
 
@@ -109,6 +112,7 @@ export class ControlAgent implements IControlAgent {
 
       try {
         const wsUrl = `${this.options.serverUrl}/v1/control/ws`;
+        logger.debug(`Attempting WebSocket connection to: ${wsUrl}`);
         this.ws = new WebSocket(wsUrl, {
           headers: {
             Authorization: `Bearer ${this.options.apiKey}`,
@@ -119,7 +123,7 @@ export class ControlAgent implements IControlAgent {
         this.ws.on("open", () => {
           this.connected = true;
           this.reconnectAttempts = 0;
-          console.log("[aden] WebSocket connected to control server");
+          logger.info("WebSocket connected to control server");
 
           // Flush queued events
           this.flushEventQueue();
@@ -133,13 +137,13 @@ export class ControlAgent implements IControlAgent {
 
         this.ws.on("close", () => {
           this.connected = false;
-          console.log("[aden] WebSocket disconnected, falling back to polling");
+          logger.info("WebSocket disconnected, falling back to polling");
           this.scheduleReconnect();
           this.startPolling();
         });
 
         this.ws.on("error", (error) => {
-          console.warn("[aden] WebSocket error:", error.message);
+          logger.warn("WebSocket error:", error.message);
           this.errorsSinceLastHeartbeat++;
           if (!this.connected) {
             // Initial connection failed, start polling and wait for first fetch
@@ -150,12 +154,12 @@ export class ControlAgent implements IControlAgent {
         // Timeout for initial connection
         setTimeout(() => {
           if (!this.connected) {
-            console.warn("[aden] WebSocket connection timeout, using polling");
+            logger.warn("WebSocket connection timeout, using polling");
             fallbackToPolling();
           }
         }, this.options.timeoutMs);
       } catch (error) {
-        console.warn("[aden] WebSocket setup failed:", error);
+        logger.warn("WebSocket setup failed:", error);
         fallbackToPolling();
       }
     });
@@ -167,7 +171,7 @@ export class ControlAgent implements IControlAgent {
   private scheduleReconnect(): void {
     if (this.reconnectTimer) return;
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.warn("[aden] Max reconnect attempts reached, using polling only");
+      logger.warn("Max reconnect attempts reached, using polling only");
       return;
     }
 
@@ -193,13 +197,13 @@ export class ControlAgent implements IControlAgent {
       if (message.type === "policy") {
         this.cachedPolicy = message.policy as ControlPolicy;
         this.lastPolicyFetch = Date.now();
-        console.log("[aden] Policy updated:", this.cachedPolicy.version);
+        logger.info("Policy updated:", this.cachedPolicy.version);
       } else if (message.type === "command") {
         // Handle real-time commands (future: immediate block, etc.)
-        console.log("[aden] Command received:", message);
+        logger.info("Command received:", message);
       }
     } catch (error) {
-      console.warn("[aden] Failed to parse message:", error);
+      logger.warn("Failed to parse message:", error);
     }
   }
 
@@ -209,6 +213,8 @@ export class ControlAgent implements IControlAgent {
    */
   private async startPolling(): Promise<void> {
     if (this.pollingTimer) return;
+
+    logger.debug(`Starting HTTP polling (interval: ${this.options.pollingIntervalMs}ms)`);
 
     // Fetch immediately and wait for it
     await this.fetchPolicy();
@@ -235,15 +241,19 @@ export class ControlAgent implements IControlAgent {
    * Fetch policy via HTTP
    */
   private async fetchPolicy(): Promise<void> {
+    logger.debug("Fetching policy from server...");
     try {
       const response = await this.httpRequest("/v1/control/policy", "GET");
       if (response.ok) {
         const policy = await response.json() as ControlPolicy;
         this.cachedPolicy = policy;
         this.lastPolicyFetch = Date.now();
+        logger.debug(`Policy fetched successfully (version: ${policy.version}, budgets: ${policy.budgets?.length ?? 0})`);
+      } else {
+        logger.debug(`Policy fetch returned status ${response.status}`);
       }
     } catch (error) {
-      console.warn("[aden] Failed to fetch policy:", error);
+      logger.warn("Failed to fetch policy:", error);
     }
   }
 
@@ -253,6 +263,7 @@ export class ControlAgent implements IControlAgent {
   private startHeartbeat(): void {
     if (this.heartbeatTimer) return;
 
+    logger.debug(`Starting heartbeat (interval: ${this.options.heartbeatIntervalMs}ms)`);
     this.heartbeatTimer = setInterval(() => {
       this.sendHeartbeat();
     }, this.options.heartbeatIntervalMs);
@@ -297,6 +308,7 @@ export class ControlAgent implements IControlAgent {
    * Disconnect from the control server
    */
   async disconnect(): Promise<void> {
+    logger.debug("Disconnecting from control server...");
     this.stopPolling();
     this.stopHeartbeat();
 
@@ -311,6 +323,7 @@ export class ControlAgent implements IControlAgent {
     }
 
     this.connected = false;
+    logger.debug("Disconnected from control server");
   }
 
   /**
@@ -485,7 +498,7 @@ export class ControlAgent implements IControlAgent {
 
           // Fire and forget - don't await to avoid blocking the request
           Promise.resolve(this.options.onAlert(alertEvent)).catch((err) => {
-            console.warn("[aden] Alert callback error:", err);
+            logger.warn("Alert callback error:", err);
           });
 
           // Return alert decision (request still proceeds, may include throttle delay)
@@ -891,8 +904,8 @@ export class ControlAgent implements IControlAgent {
     // ADAPTIVE: Force validation if remaining budget is critically low
     if (this.options.adaptiveThresholdEnabled) {
       if (remainingBudgetUsd <= this.options.adaptiveMinRemainingUsd) {
-        console.debug(
-          `[aden] Remaining budget $${remainingBudgetUsd.toFixed(4)} <= ` +
+        logger.debug(
+          `Remaining budget $${remainingBudgetUsd.toFixed(4)} <= ` +
           `$${this.options.adaptiveMinRemainingUsd.toFixed(2)}, forcing validation`
         );
         return true;
@@ -905,15 +918,15 @@ export class ControlAgent implements IControlAgent {
       const shouldSample = Math.random() < samplingRate;
 
       if (!shouldSample) {
-        console.debug(
-          `[aden] Skipping validation (sampling rate: ${(samplingRate * 100).toFixed(1)}%, ` +
+        logger.debug(
+          `Skipping validation (sampling rate: ${(samplingRate * 100).toFixed(1)}%, ` +
           `usage: ${budgetUsagePercent.toFixed(1)}%)`
         );
         return false;
       }
 
-      console.debug(
-        `[aden] Sampled for validation (rate: ${(samplingRate * 100).toFixed(1)}%, ` +
+      logger.debug(
+        `Sampled for validation (rate: ${(samplingRate * 100).toFixed(1)}%, ` +
         `usage: ${budgetUsagePercent.toFixed(1)}%)`
       );
       return true;
@@ -993,8 +1006,8 @@ export class ControlAgent implements IControlAgent {
 
         if (response.ok) {
           const data = await response.json() as Record<string, unknown>;
-          console.debug(
-            `[aden] Server validation response: allowed=${data.allowed}, ` +
+          logger.debug(
+            `Server validation response: allowed=${data.allowed}, ` +
             `action=${data.action}, reason=${data.reason}`
           );
           return {
@@ -1010,14 +1023,14 @@ export class ControlAgent implements IControlAgent {
             degradeToModel: data.degrade_to_model as string | undefined,
           };
         } else {
-          console.warn(`[aden] Server validation returned status ${response.status}`);
+          logger.warn(`Server validation returned status ${response.status}`);
           return null;
         }
       } finally {
         clearTimeout(timeoutId);
       }
     } catch (error) {
-      console.warn(`[aden] Server validation failed: ${error}`);
+      logger.warn(`Server validation failed: ${error}`);
       return null;
     }
   }
@@ -1075,8 +1088,8 @@ export class ControlAgent implements IControlAgent {
 
     // HYBRID ENFORCEMENT: Check if we should validate with server
     if (this.shouldValidateWithServer(usagePercent, remaining, limit)) {
-      console.debug(
-        `[aden] Budget '${budget.name}' at ${usagePercent.toFixed(1)}% ` +
+      logger.debug(
+        `Budget '${budget.name}' at ${usagePercent.toFixed(1)}% ` +
         `($${currentSpend.toFixed(6)}/$${limit.toFixed(6)}), validating with server`
       );
 
@@ -1091,8 +1104,8 @@ export class ControlAgent implements IControlAgent {
         return this.applyServerValidationResult(validation, budget.id);
       } else {
         // Server validation failed - fall back to local enforcement
-        console.warn(
-          `[aden] Server validation failed for budget '${budget.id}', using local enforcement`
+        logger.warn(
+          `Server validation failed for budget '${budget.id}', using local enforcement`
         );
         if (!this.options.failOpen) {
           return {
@@ -1169,14 +1182,16 @@ export class ControlAgent implements IControlAgent {
     if (this.connected && this.ws?.readyState === WebSocket.OPEN) {
       try {
         this.ws.send(JSON.stringify(event));
+        logger.debug(`Event sent via WebSocket: ${event.event_type}`);
         return;
       } catch (error) {
-        console.warn("[aden] WebSocket send failed, queuing event");
+        logger.warn("WebSocket send failed, queuing event");
       }
     }
 
     // Otherwise queue for HTTP batch or later WebSocket send
     this.queueEvent(event);
+    logger.debug(`Event queued: ${event.event_type} (queue size: ${this.eventQueue.length})`);
 
     // If not connected via WebSocket, send via HTTP immediately
     if (!this.connected) {
@@ -1201,8 +1216,11 @@ export class ControlAgent implements IControlAgent {
   private async flushEventQueue(): Promise<void> {
     if (this.eventQueue.length === 0) return;
 
+    const eventCount = this.eventQueue.length;
+
     // If WebSocket is connected, send via WebSocket
     if (this.connected && this.ws?.readyState === WebSocket.OPEN) {
+      logger.debug(`Flushing ${eventCount} events via WebSocket`);
       const events = [...this.eventQueue];
       this.eventQueue = [];
 
@@ -1218,13 +1236,15 @@ export class ControlAgent implements IControlAgent {
     }
 
     // Otherwise send via HTTP batch
+    logger.debug(`Flushing ${eventCount} events via HTTP`);
     try {
       const events = [...this.eventQueue];
       this.eventQueue = [];
 
       await this.httpRequest("/v1/control/events", "POST", { events });
+      logger.debug(`Successfully sent ${eventCount} events via HTTP`);
     } catch (error) {
-      console.warn("[aden] Failed to flush event queue:", error);
+      logger.warn("Failed to flush event queue:", error);
       // Events are lost - could re-queue but might cause infinite growth
     }
   }
