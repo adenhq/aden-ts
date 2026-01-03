@@ -55,6 +55,10 @@ export class ControlAgent implements IControlAgent {
   // Rate limiting tracking
   private requestCounts: Map<string, { count: number; windowStart: number }> = new Map();
 
+  // Pricing cache (fetched from server)
+  private pricingCache: Map<string, { input: number; output: number; cached_input: number }> = new Map();
+  private pricingAliases: Map<string, string> = new Map();
+
   constructor(options: ControlAgentOptions) {
     this.options = {
       serverUrl: options.serverUrl.replace(/\/$/, ""),
@@ -92,7 +96,15 @@ export class ControlAgent implements IControlAgent {
     } else {
       // HTTP-only mode: just use polling
       logger.debug("Using HTTP polling mode (no WebSocket URL)");
-      this.startPolling();
+      await this.startPolling();
+    }
+
+    // Fetch pricing table for accurate cost estimation
+    try {
+      await this.fetchPricing();
+    } catch (error) {
+      logger.warn("Failed to fetch pricing table:", error);
+      // Continue with fallback pricing
     }
 
     // Start heartbeat
@@ -255,6 +267,80 @@ export class ControlAgent implements IControlAgent {
     } catch (error) {
       logger.warn("Failed to fetch policy:", error);
     }
+  }
+
+  /**
+   * Fetch pricing table from server and cache it
+   */
+  private async fetchPricing(): Promise<void> {
+    logger.debug("Fetching pricing table from server...");
+    try {
+      const response = await this.httpRequest("/tsdb/pricing", "GET");
+      if (response.ok) {
+        const data = await response.json() as { pricing?: Record<string, { input?: number; output?: number; cached_input?: number; aliases?: string[] }> };
+        const pricing = data.pricing ?? {};
+
+        // Build cache and alias map
+        for (const [model, rates] of Object.entries(pricing)) {
+          const modelLower = model.toLowerCase();
+          this.pricingCache.set(modelLower, {
+            input: rates.input ?? 1.0,
+            output: rates.output ?? 3.0,
+            cached_input: rates.cached_input ?? (rates.input ?? 1.0) * 0.25,
+          });
+
+          // Index aliases
+          if (rates.aliases) {
+            for (const alias of rates.aliases) {
+              this.pricingAliases.set(alias.toLowerCase(), modelLower);
+            }
+          }
+        }
+
+        logger.debug(`Loaded pricing for ${this.pricingCache.size} models`);
+      } else {
+        logger.debug(`Pricing fetch returned status ${response.status}`);
+      }
+    } catch (error) {
+      logger.warn("Failed to fetch pricing:", error);
+      // Continue with fallback pricing
+    }
+  }
+
+  /**
+   * Get pricing for a model from cached pricing table
+   */
+  private getModelPricing(model: string): { input: number; output: number; cached_input: number } {
+    const fallback = { input: 1.0, output: 3.0, cached_input: 0.25 };
+
+    if (!model) {
+      return fallback;
+    }
+
+    const modelLower = model.toLowerCase();
+
+    // Check direct match first
+    if (this.pricingCache.has(modelLower)) {
+      return this.pricingCache.get(modelLower)!;
+    }
+
+    // Check aliases
+    if (this.pricingAliases.has(modelLower)) {
+      const canonical = this.pricingAliases.get(modelLower)!;
+      if (this.pricingCache.has(canonical)) {
+        return this.pricingCache.get(canonical)!;
+      }
+    }
+
+    // Try prefix matching for versioned models
+    for (const [cachedModel, rates] of this.pricingCache) {
+      if (modelLower.startsWith(cachedModel) || cachedModel.startsWith(modelLower)) {
+        return rates;
+      }
+    }
+
+    // Fallback pricing for unknown models
+    return fallback;
   }
 
   /**
@@ -830,14 +916,27 @@ export class ControlAgent implements IControlAgent {
   }
 
   /**
-   * Estimate cost from a metric event
-   * Uses gpt-4o pricing as default: $2.50/1M input, $10/1M output
+   * Estimate cost from a metric event using server pricing table.
+   * Falls back to default pricing if model not found.
    */
   private estimateCost(event: MetricEvent): number {
-    // gpt-4o pricing (default for estimation)
-    const inputCost = event.input_tokens * 0.0000025; // $2.50 per 1M tokens
-    const outputCost = event.output_tokens * 0.00001; // $10 per 1M tokens
-    return inputCost + outputCost;
+    if (event.total_tokens === 0) {
+      return 0;
+    }
+
+    // Get pricing for this model (fetched from server on connect)
+    const rates = this.getModelPricing(event.model);
+
+    // Calculate cost (pricing is per 1M tokens)
+    // Use cached_input rate for cached tokens if available
+    const cachedTokens = event.cached_tokens ?? 0;
+    const regularInput = Math.max(0, event.input_tokens - cachedTokens);
+
+    const inputCost = (regularInput * rates.input) / 1_000_000;
+    const cachedCost = (cachedTokens * rates.cached_input) / 1_000_000;
+    const outputCost = (event.output_tokens * rates.output) / 1_000_000;
+
+    return inputCost + cachedCost + outputCost;
   }
 
   // ===========================================================================
