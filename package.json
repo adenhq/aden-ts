@@ -1,6 +1,6 @@
 {
   "name": "aden-ts",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "LLM Observability & Cost Control SDK - Real-time usage tracking, budget enforcement, and cost control for OpenAI, Anthropic, and Gemini",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
