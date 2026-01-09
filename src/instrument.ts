@@ -8,6 +8,7 @@
 import { instrumentOpenAI, uninstrumentOpenAI, isOpenAIInstrumented } from "./instrument-openai.js";
 import { instrumentGemini, uninstrumentGemini, isGeminiInstrumented } from "./instrument-gemini.js";
 import { instrumentAnthropic, uninstrumentAnthropic, isAnthropicInstrumented } from "./instrument-anthropic.js";
+import { instrumentDify, uninstrumentDify, isDifyInstrumented } from "./instrument-dify.js";
 import { createControlAgent, createControlAgentEmitter } from "./control-agent.js";
 import { getControlServerUrl, type MeterOptions, type BeforeRequestHook, type BeforeRequestContext } from "./types.js";
 import type { IControlAgent } from "./control-types.js";
@@ -19,6 +20,7 @@ export interface InstrumentationResult {
   openai: boolean;
   gemini: boolean;
   anthropic: boolean;
+  dify: boolean;
   controlAgent: IControlAgent | null;
 }
 
@@ -202,16 +204,18 @@ export async function instrument(options: MeterOptions): Promise<Instrumentation
   globalOptions = resolvedOptions;
 
   // Run all instrumentations in parallel
-  const [openai, gemini, anthropic] = await Promise.all([
+  const [openai, gemini, anthropic, dify] = await Promise.all([
     instrumentOpenAI(resolvedOptions),
     instrumentGemini(resolvedOptions),
     instrumentAnthropic(resolvedOptions),
+    instrumentDify(resolvedOptions),
   ]);
 
   const result: InstrumentationResult = {
     openai,
     gemini,
     anthropic,
+    dify,
     controlAgent: globalControlAgent,
   };
 
@@ -246,6 +250,7 @@ export async function uninstrument(): Promise<void> {
     uninstrumentOpenAI(),
     uninstrumentGemini(),
     uninstrumentAnthropic(),
+    uninstrumentDify(),
   ]);
   globalOptions = null;
 }
@@ -258,6 +263,7 @@ export function getInstrumentedSDKs(): InstrumentationResult {
     openai: isOpenAIInstrumented(),
     gemini: isGeminiInstrumented(),
     anthropic: isAnthropicInstrumented(),
+    dify: isDifyInstrumented(),
     controlAgent: globalControlAgent,
   };
 }
@@ -266,7 +272,7 @@ export function getInstrumentedSDKs(): InstrumentationResult {
  * Check if any SDK is currently instrumented
  */
 export function isInstrumented(): boolean {
-  return isOpenAIInstrumented() || isGeminiInstrumented() || isAnthropicInstrumented();
+  return isOpenAIInstrumented() || isGeminiInstrumented() || isAnthropicInstrumented() || isDifyInstrumented();
 }
 
 /**
@@ -317,3 +323,9 @@ export {
   uninstrumentFetch,
   isFetchInstrumented,
 } from "./instrument-fetch.js";
+
+export {
+  instrumentDify,
+  uninstrumentDify,
+  isDifyInstrumented,
+} from "./instrument-dify.js";

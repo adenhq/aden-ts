@@ -24,6 +24,10 @@ export {
   instrumentFetch,
   uninstrumentFetch,
   isFetchInstrumented,
+  // Dify instrumentation
+  instrumentDify,
+  uninstrumentDify,
+  isDifyInstrumented,
 } from "./instrument.js";
 export type { InstrumentationResult } from "./instrument.js";
 
