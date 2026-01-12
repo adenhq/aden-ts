@@ -73,8 +73,8 @@ export interface MetricEvent {
   parent_span_id?: string;
   /** Provider-specific request ID (if available) */
   request_id: string | null;
-  /** LLM provider: openai, gemini, anthropic */
-  provider: "openai" | "gemini" | "anthropic";
+  /** LLM provider: openai, gemini, anthropic, dify */
+  provider: "openai" | "gemini" | "anthropic" | "dify";
   /** Model used for the request */
   model: string;
   /** Whether streaming was enabled */
@@ -101,6 +101,16 @@ export interface MetricEvent {
   cached_tokens: number;
   /** Reasoning tokens used (for o1/o3 models) */
   reasoning_tokens: number;
+
+  // === Cost (from providers that report it, e.g., Dify) ===
+  /** Cost for input/prompt tokens (USD) */
+  input_cost?: number;
+  /** Cost for output/completion tokens (USD) */
+  output_cost?: number;
+  /** Total cost for the request (USD) */
+  total_cost?: number;
+  /** Currency for cost fields (e.g., 'USD') */
+  currency?: string;
 
   // === Rate Limits (flat) ===
   /** Remaining requests in current window */
@@ -255,6 +265,9 @@ export interface SDKClasses {
   /** Anthropic class from @anthropic-ai/sdk */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   Anthropic?: any;
+  /** Dify client module from dify-client */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Dify?: any;
 }
 
 /**
